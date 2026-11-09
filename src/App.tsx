@@ -1,36 +1,11 @@
 import { CRM } from "@/components/atomic-crm/root/CRM";
+import { Cruscotto } from "@/components/agenzia/Cruscotto";
 
 /**
- * Application entry point
- *
- * Customize Atomic CRM by passing props to the CRM component:
- *  - companySectors
- *  - darkTheme
- *  - dealCategories
- *  - dealPipelineStatuses
- *  - dealStages
- *  - lightTheme
- *  - darkModeLogo / lightModeLogo
- *  - noteStatuses
- *  - taskTypes
- *  - title
- * ... as well as all the props accepted by shadcn-admin-kit's <Admin> component.
- *
- * Logos must be an imported asset, an absolute URL, or a data URI — never a
- * route-relative path like "./img/logo.png", which breaks on nested routes.
- *
- * @example
- * import logoDark from "./logo-dark.svg";
- * import logoLight from "./logo-light.svg";
- *
- * const App = () => (
- *    <CRM
- *       darkModeLogo={logoDark}
- *       lightModeLogo={logoLight}
- *       title="Acme CRM"
- *    />
- * );
+ * Dashboard di agenzia Punto Assicurativo (agenzia Vittoria 346), costruita su Atomic CRM v1.6.1.
+ * La pagina iniziale e' il cruscotto con i cinque numeri (src/components/agenzia/Cruscotto.tsx),
+ * alimentato dall'agente Python agenti\cruscotto_agenzia (tabella Supabase `cruscotto`).
  */
-const App = () => <CRM />;
+const App = () => <CRM title="Agenzia 346" dashboard={Cruscotto} />;
 
 export default App;

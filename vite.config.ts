@@ -16,8 +16,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
     visualizer({
-      open: process.env.NODE_ENV !== "CI",
-      filename: "./dist/stats.html",
+      open: false, // non aprire la mappa dei pesi a ogni build (Lorenzo se la ritrovava nel browser)
+      filename: "./stats.html", // fuori da dist, cosi' non finisce su GitHub Pages
     }),
     createHtmlPlugin({
       minify: true,

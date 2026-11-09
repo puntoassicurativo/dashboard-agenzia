@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Home, ListTodo, Plus, Settings, Users } from "lucide-react";
+import { Home, LayoutList, Plus, Settings } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { Link, matchPath, useLocation, useMatch } from "react-router";
 import { ContactCreateSheet } from "../contacts/ContactCreateSheet";
@@ -21,6 +21,8 @@ export const MobileNavigation = () => {
   let currentPath: string | boolean = "/";
   if (matchPath("/", location.pathname)) {
     currentPath = "/";
+  } else if (matchPath("/sezioni/*", location.pathname)) {
+    currentPath = "/sezioni";
   } else if (matchPath("/contacts/*", location.pathname)) {
     currentPath = "/contacts";
   } else if (matchPath("/companies/*", location.pathname)) {
@@ -54,26 +56,18 @@ export const MobileNavigation = () => {
     >
       <div className="flex justify-center">
         <>
+          {/* Dashboard di agenzia: Cruscotto, Sezioni, Impostazioni */}
           <NavigationButton
             href="/"
             Icon={Home}
-            label={translate("ra.page.dashboard")}
+            label="Cruscotto"
             isActive={currentPath === "/"}
           />
           <NavigationButton
-            href="/contacts"
-            Icon={Users}
-            label={translate("resources.contacts.name", {
-              smart_count: 2,
-            })}
-            isActive={currentPath === "/contacts"}
-          />
-          <CreateButton />
-          <NavigationButton
-            href="/tasks"
-            Icon={ListTodo}
-            label={translate("resources.tasks.name", { smart_count: 2 })}
-            isActive={currentPath === "/tasks"}
+            href="/sezioni"
+            Icon={LayoutList}
+            label="Sezioni"
+            isActive={currentPath === "/sezioni"}
           />
           <SettingsButton />
         </>
@@ -108,7 +102,8 @@ const NavigationButton = ({
   </Button>
 );
 
-const CreateButton = () => {
+// non piu' nella barra (dashboard di agenzia), lasciato esportato per non toccare il resto
+export const CreateButton = () => {
   const translate = useTranslate();
   const contact_id = useMatch("/contacts/:id/*")?.params.id;
   const [contactCreateOpen, setContactCreateOpen] = useState(false);
@@ -174,7 +169,6 @@ const CreateButton = () => {
 };
 
 const SettingsButton = () => {
-  const translate = useTranslate();
   const location = useLocation();
   const isActive = !!matchPath("/settings", location.pathname);
 
@@ -182,7 +176,7 @@ const SettingsButton = () => {
     <NavigationButton
       href="/settings"
       Icon={Settings}
-      label={translate("crm.settings.title")}
+      label="Impostazioni"
       isActive={isActive}
     />
   );

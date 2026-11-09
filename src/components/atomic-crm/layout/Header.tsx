@@ -13,17 +13,12 @@ import { ChangelogPage } from "../misc/ChangelogPage";
 const Header = () => {
   const { darkModeLogo, lightModeLogo, title } = useConfigurationContext();
   const location = useLocation();
-  const translate = useTranslate();
 
   let currentPath: string | boolean = "/";
   if (matchPath("/", location.pathname)) {
     currentPath = "/";
-  } else if (matchPath("/contacts/*", location.pathname)) {
-    currentPath = "/contacts";
-  } else if (matchPath("/companies/*", location.pathname)) {
-    currentPath = "/companies";
-  } else if (matchPath("/deals/*", location.pathname)) {
-    currentPath = "/deals";
+  } else if (matchPath("/sezioni/*", location.pathname)) {
+    currentPath = "/sezioni";
   } else {
     currentPath = false;
   }
@@ -52,31 +47,16 @@ const Header = () => {
               </Link>
               <div>
                 <nav className="flex">
+                  {/* Dashboard di agenzia: al posto di Contacts, Companies, Deals */}
                   <NavigationTab
-                    label={translate("ra.page.dashboard")}
+                    label="Cruscotto"
                     to="/"
                     isActive={currentPath === "/"}
                   />
                   <NavigationTab
-                    label={translate("resources.contacts.name", {
-                      smart_count: 2,
-                    })}
-                    to="/contacts"
-                    isActive={currentPath === "/contacts"}
-                  />
-                  <NavigationTab
-                    label={translate("resources.companies.name", {
-                      smart_count: 2,
-                    })}
-                    to="/companies"
-                    isActive={currentPath === "/companies"}
-                  />
-                  <NavigationTab
-                    label={translate("resources.deals.name", {
-                      smart_count: 2,
-                    })}
-                    to="/deals"
-                    isActive={currentPath === "/deals"}
+                    label="Sezioni"
+                    to="/sezioni"
+                    isActive={currentPath === "/sezioni"}
                   />
                 </nav>
               </div>

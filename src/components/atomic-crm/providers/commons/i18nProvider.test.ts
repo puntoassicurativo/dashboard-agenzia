@@ -54,12 +54,12 @@ describe("i18nProvider", () => {
     expect(getInitialLocale()).toBe("fr");
   });
 
-  it("falls back to english when browser locale is unsupported", () => {
+  it("falls back to italian (agency dashboard) when browser locale is not french", () => {
     vi.stubGlobal("navigator", {
       language: "es-ES",
       languages: ["es-ES", "pt-BR"],
     });
 
-    expect(getInitialLocale()).toBe("en");
+    expect(getInitialLocale()).toBe("it");
   });
 });

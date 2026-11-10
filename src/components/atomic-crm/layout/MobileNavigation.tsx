@@ -6,7 +6,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Home, LayoutList, Plus, Settings } from "lucide-react";
+import { Home, LayoutList, Plus, Settings, TrendingUp } from "lucide-react";
+import { useAccessoUtile } from "../../agenzia/Andamento";
 import { useTranslate } from "ra-core";
 import { Link, matchPath, useLocation, useMatch } from "react-router";
 import { ContactCreateSheet } from "../contacts/ContactCreateSheet";
@@ -17,12 +18,15 @@ import { TaskCreateSheet } from "../tasks/TaskCreateSheet";
 export const MobileNavigation = () => {
   const location = useLocation();
   const translate = useTranslate();
+  const { data: vedeUtile } = useAccessoUtile();
 
   let currentPath: string | boolean = "/";
   if (matchPath("/", location.pathname)) {
     currentPath = "/";
   } else if (matchPath("/sezioni/*", location.pathname)) {
     currentPath = "/sezioni";
+  } else if (matchPath("/andamento", location.pathname)) {
+    currentPath = "/andamento";
   } else if (matchPath("/contacts/*", location.pathname)) {
     currentPath = "/contacts";
   } else if (matchPath("/companies/*", location.pathname)) {
@@ -69,6 +73,14 @@ export const MobileNavigation = () => {
             label="Sezioni"
             isActive={currentPath === "/sezioni"}
           />
+          {vedeUtile && (
+            <NavigationButton
+              href="/andamento"
+              Icon={TrendingUp}
+              label="Andamento"
+              isActive={currentPath === "/andamento"}
+            />
+          )}
           <SettingsButton />
         </>
       </div>

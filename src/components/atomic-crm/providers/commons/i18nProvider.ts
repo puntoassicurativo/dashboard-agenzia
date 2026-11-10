@@ -6,6 +6,7 @@ import { raSupabaseEnglishMessages } from "ra-supabase-language-english";
 import { raSupabaseFrenchMessages } from "ra-supabase-language-french";
 import { englishCrmMessages } from "./englishCrmMessages";
 import { frenchCrmMessages } from "./frenchCrmMessages";
+import { italianCrmMessages, italianRaMessages } from "./italianMessages";
 
 const raSupabaseEnglishMessagesOverride = {
   "ra-supabase": {
@@ -39,9 +40,16 @@ const frenchCatalog = mergeTranslations(
   frenchCrmMessages,
 );
 
-export const getInitialLocale = (): "en" | "fr" => {
+// Dashboard di agenzia: italiano per tutti, inglese e francese restano sceglibili dal menu.
+const italianCatalog = mergeTranslations(
+  englishCatalog,
+  italianRaMessages,
+  italianCrmMessages,
+);
+
+export const getInitialLocale = (): "en" | "fr" | "it" => {
   if (typeof navigator === "undefined") {
-    return "en";
+    return "it";
   }
 
   const browserLocale = navigator.languages?.[0] ?? navigator.language;
@@ -49,7 +57,7 @@ export const getInitialLocale = (): "en" | "fr" => {
     return "fr";
   }
 
-  return "en";
+  return "it";
 };
 
 export const i18nProvider = polyglotI18nProvider(
@@ -57,10 +65,14 @@ export const i18nProvider = polyglotI18nProvider(
     if (locale === "fr") {
       return frenchCatalog;
     }
-    return englishCatalog;
+    if (locale === "en") {
+      return englishCatalog;
+    }
+    return italianCatalog;
   },
   getInitialLocale(),
   [
+    { locale: "it", name: "Italiano" },
     { locale: "en", name: "English" },
     { locale: "fr", name: "Français" },
   ],

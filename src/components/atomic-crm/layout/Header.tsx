@@ -9,16 +9,20 @@ import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { ImportPage } from "../misc/ImportPage";
 import { ChangelogPage } from "../misc/ChangelogPage";
+import { useAccessoUtile } from "../../agenzia/Andamento";
 
 const Header = () => {
   const { darkModeLogo, lightModeLogo, title } = useConfigurationContext();
   const location = useLocation();
+  const { data: vedeUtile } = useAccessoUtile();
 
   let currentPath: string | boolean = "/";
   if (matchPath("/", location.pathname)) {
     currentPath = "/";
   } else if (matchPath("/sezioni/*", location.pathname)) {
     currentPath = "/sezioni";
+  } else if (matchPath("/andamento", location.pathname)) {
+    currentPath = "/andamento";
   } else {
     currentPath = false;
   }
@@ -58,6 +62,13 @@ const Header = () => {
                     to="/sezioni"
                     isActive={currentPath === "/sezioni"}
                   />
+                  {vedeUtile && (
+                    <NavigationTab
+                      label="Andamento mese"
+                      to="/andamento"
+                      isActive={currentPath === "/andamento"}
+                    />
+                  )}
                 </nav>
               </div>
               <div className="flex items-center">

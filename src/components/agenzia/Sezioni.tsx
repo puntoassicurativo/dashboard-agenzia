@@ -36,11 +36,12 @@ export const SEZIONI: Record<string, Meta> = {
     titoloRiga: "Cliente",
   },
   C: {
-    titolo: "Auto sospese che si riattivano",
-    breve: "Messaggio due settimane prima della riattivazione automatica",
-    descrizione: "NA009 non riporta la data di fine sospensione: la sezione arriva quando la troviamo.",
+    titolo: "Auto sospese",
+    breve: "Ordinate per mesi di sospensione, da chiamare prima della riattivazione",
+    descrizione:
+      "NA009 non riporta la data di fine sospensione: le auto sono ordinate per mesi di sospensione. Le condizioni auto (art. 2.8) dicono al massimo 10 mesi per annualita', poi la copertura si riattiva da sola. Fonte NA009, telefono da NA009 o NA010.",
     frequenza: "ogni lunedi'",
-    inArrivo: "In arrivo: serve la data di riattivazione",
+    titoloRiga: "Cliente",
   },
   D: {
     titolo: "Recupero franchigie",
@@ -425,6 +426,7 @@ const Riepilogo = ({ s, r }: { s: string; r: any }) => {
     (Array.isArray(r.conteggi) ? r.conteggi : Object.entries(r.conteggi ?? {})).forEach(([k, v]: [string, any]) =>
       voci.push([k, v]),
     );
+  if (s === "C") Object.entries(r.per_gruppo ?? {}).forEach(([k, v]) => voci.push([k, v]));
   if (s === "D") voci.push(["Pratiche aperte", r.totale], ["Da recuperare", r.da_recuperare != null ? `${numero(r.da_recuperare)} €` : null]);
   if (s === "E")
     voci.push(...(Object.entries(r.per_stato ?? {}) as [string, any][]), [

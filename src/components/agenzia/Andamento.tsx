@@ -19,10 +19,13 @@ import {
   Spese222,
 } from "./ContoAgenzia";
 import { type Anno, DaGennaio, useBloccoAnno } from "./DaGennaio";
+import { Commercialista } from "./Commercialista";
 import { Estratti } from "./Estratti";
 import { AvvisoUtile, FiscaleBlocco, useBloccoFiscale } from "./Fiscale";
+import { Flussi } from "./Flussi";
 import { MeseVirtuoso } from "./MeseVirtuoso";
 import { Pna } from "./Pna";
+import { Telefono } from "./Telefono";
 
 type Voci = Record<string, number>;
 type Dettaglio = Record<string, { chi: string; importo: number }[]>;
@@ -684,7 +687,9 @@ export const AndamentoPage = () => {
       {m.valori.ponte && (
         <PonteBanca p={m.valori.ponte} mese={nomeMese(m.mese)} />
       )}
+      <Flussi mese={m.mese} />
       <Pna mese={m.mese} />
+      <Commercialista mese={m.mese} />
       <GraficoUtile mesi={ultimi} />
       <VociMese m={m} />
       {data.modello && m.valori.movimenti && (
@@ -740,6 +745,7 @@ export const AndamentoPage = () => {
           )}
         </div>
       )}
+      <Telefono />
     </div>
   );
 };

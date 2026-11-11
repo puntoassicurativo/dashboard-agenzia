@@ -164,7 +164,7 @@ export const DaGennaio = () => {
           valore={euro(c.entrate)}
           nota={
             a.modello
-              ? "provvigioni maturate (foglio Saldi) e altre entrate del 257"
+              ? "provvigioni maturate (foglio Saldi), incentivi e contributi della compagnia, altre entrate"
               : "girato dal conto premi al conto gestionale 257 e altre entrate"
           }
         />
@@ -173,7 +173,7 @@ export const DaGennaio = () => {
           valore={euro(c.uscite)}
           nota={
             a.modello
-              ? "conto gestionale 257, broker e uscite una tantum del foglio"
+              ? "conti gestionali 257 e Desio, broker, trattenute della compagnia, uscite una tantum del foglio"
               : undefined
           }
         />

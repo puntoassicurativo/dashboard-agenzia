@@ -38,7 +38,8 @@ export const SEZIONI: Record<string, Meta> = {
   C: {
     titolo: "Auto sospese che si riattivano",
     breve: "Messaggio due settimane prima della riattivazione automatica",
-    descrizione: "NA009 non riporta la data di fine sospensione: la sezione arriva quando la troviamo.",
+    descrizione:
+      "NA009 non riporta la data di fine sospensione: la sezione arriva quando la troviamo.",
     frequenza: "ogni lunedi'",
     inArrivo: "In arrivo: serve la data di riattivazione",
   },
@@ -100,11 +101,20 @@ type Riga = {
 const sb = () => getSupabaseClient();
 const dataOra = (iso?: string | null) =>
   iso
-    ? new Date(iso).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+    ? new Date(iso).toLocaleString("it-IT", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
     : "";
 const numero = (v: any) =>
   typeof v === "number"
-    ? v.toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 2, useGrouping: "always" } as unknown as Intl.NumberFormatOptions)
+    ? v.toLocaleString("it-IT", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+        useGrouping: "always",
+      } as unknown as Intl.NumberFormatOptions)
     : String(v ?? "");
 const CAMPI_SOLDI = /premio|recuperare|recuperato|aumento|rca/i;
 const valore = (k: string, v: any) =>
@@ -116,7 +126,9 @@ const useInfo = () =>
     queryFn: async () => {
       const { data, error } = await sb().from("sezione_info").select("*");
       if (error) throw error;
-      return Object.fromEntries((data as Info[]).map((i) => [i.sezione, i])) as Record<string, Info>;
+      return Object.fromEntries(
+        (data as Info[]).map((i) => [i.sezione, i]),
+      ) as Record<string, Info>;
     },
   });
 
@@ -128,8 +140,9 @@ export const SezioniPage = () => {
       <div>
         <h1 className="text-xl font-semibold">Sezioni</h1>
         <p className="text-sm text-muted-foreground">
-          Liste aggiornate in automatico da BusinessObjects. Per ora le vedete solo tu, Fabio e Claudio: quali
-          tenere e a chi mandarle lo decide Fabio.
+          Liste aggiornate in automatico da BusinessObjects. Per ora le vedete
+          solo tu, Fabio e Claudio: quali tenere e a chi mandarle lo decide
+          Fabio.
         </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -141,22 +154,33 @@ export const SezioniPage = () => {
               className={`rounded-lg border bg-card p-4 h-full flex flex-col gap-1 ${m.inArrivo ? "opacity-60" : "hover:border-foreground/40"}`}
             >
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-sm text-muted-foreground">Sezione {k}</span>
+                <span className="text-sm text-muted-foreground">
+                  Sezione {k}
+                </span>
                 {tot != null && !m.inArrivo && (
-                  <span className="text-sm tabular-nums">{k === "F" ? "" : `${tot} righe`}</span>
+                  <span className="text-sm tabular-nums">
+                    {k === "F" ? "" : `${tot} righe`}
+                  </span>
                 )}
               </div>
               <div className="font-semibold">{m.titolo}</div>
               <div className="text-sm text-muted-foreground">{m.breve}</div>
               <div className="text-xs text-muted-foreground mt-auto pt-2">
-                {m.inArrivo ?? (i ? `Aggiornata il ${dataOra(i.aggiornato_il)}, ${m.frequenza}` : `Non ancora aggiornata, ${m.frequenza}`)}
+                {m.inArrivo ??
+                  (i
+                    ? `Aggiornata il ${dataOra(i.aggiornato_il)}, ${m.frequenza}`
+                    : `Non ancora aggiornata, ${m.frequenza}`)}
               </div>
             </div>
           );
           return m.inArrivo ? (
             <div key={k}>{contenuto}</div>
           ) : (
-            <Link key={k} to={`/sezioni/${k}`} className="no-underline text-foreground">
+            <Link
+              key={k}
+              to={`/sezioni/${k}`}
+              className="no-underline text-foreground"
+            >
               {contenuto}
             </Link>
           );
@@ -178,7 +202,8 @@ const TabelleSP = ({ r }: { r: any }) => {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        Da inizio anno a {per(r.periodo)}, confronto con {per(r.periodo_ap)}. {r.nota}
+        Da inizio anno a {per(r.periodo)}, confronto con {per(r.periodo_ap)}.{" "}
+        {r.nota}
       </p>
       {Object.entries(nomi).map(([k, t]) => (
         <div key={k} className="rounded-lg border bg-card p-4 overflow-x-auto">
@@ -196,16 +221,27 @@ const TabelleSP = ({ r }: { r: any }) => {
             </thead>
             <tbody>
               {(r.tabelle?.[k] ?? []).map((x: any) => (
-                <tr key={x.nome} className={`border-t ${x.nome === "TOTALE" ? "font-semibold" : ""}`}>
+                <tr
+                  key={x.nome}
+                  className={`border-t ${x.nome === "TOTALE" ? "font-semibold" : ""}`}
+                >
                   <td className="py-1 pr-2">{x.nome}</td>
-                  <td className="text-right">{numero(Math.round(x.premi))} €</td>
-                  <td className="text-right">{numero(Math.round(x.sinistri))} €</td>
+                  <td className="text-right">
+                    {numero(Math.round(x.premi))} €
+                  </td>
+                  <td className="text-right">
+                    {numero(Math.round(x.sinistri))} €
+                  </td>
                   <td className="text-right">{x.n_sinistri}</td>
-                  <td className={`text-right ${x.sp != null && x.sp > 65 ? "text-red-700 dark:text-red-400" : ""}`}>
+                  <td
+                    className={`text-right ${x.sp != null && x.sp > 65 ? "text-red-700 dark:text-red-400" : ""}`}
+                  >
                     {x.sp != null ? `${numero(x.sp)}%` : "n.d."}
                     {x.sp != null && x.sp > 65 ? " ⚠" : ""}
                   </td>
-                  <td className="text-right text-muted-foreground">{x.sp_ap != null ? `${numero(x.sp_ap)}%` : "n.d."}</td>
+                  <td className="text-right text-muted-foreground">
+                    {x.sp_ap != null ? `${numero(x.sp_ap)}%` : "n.d."}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -222,10 +258,15 @@ const Scheda = ({ r, campoTitolo }: { r: Riga; campoTitolo: string }) => {
   const [nota, setNota] = useState(r.nota ?? "");
   const salva = useMutation({
     mutationFn: async (campi: { fatto?: boolean; nota?: string }) => {
-      const { error } = await sb().from("sezione_righe").update(campi).eq("sezione", r.sezione).eq("chiave", r.chiave);
+      const { error } = await sb()
+        .from("sezione_righe")
+        .update(campi)
+        .eq("sezione", r.sezione)
+        .eq("chiave", r.chiave);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["sezione_righe", r.sezione] }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["sezione_righe", r.sezione] }),
   });
   const { telefono, whatsapp, _campi, ...resto } = r.dati;
   const titolo = resto[campoTitolo] ?? r.chiave;
@@ -236,7 +277,9 @@ const Scheda = ({ r, campoTitolo }: { r: Riga; campoTitolo: string }) => {
     .map((k) => [k, resto[k]] as [string, any])
     .filter(([k, v]) => k !== campoTitolo && v !== "" && v != null);
   return (
-    <div className={`rounded-lg border bg-card p-4 flex flex-col gap-2 ${r.fatto ? "opacity-60" : ""}`}>
+    <div
+      className={`rounded-lg border bg-card p-4 flex flex-col gap-2 ${r.fatto ? "opacity-60" : ""}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="font-semibold truncate">{titolo}</div>
@@ -266,7 +309,10 @@ const Scheda = ({ r, campoTitolo }: { r: Riga; campoTitolo: string }) => {
       {(telefono || whatsapp) && (
         <div className="flex flex-wrap gap-2">
           {telefono && (
-            <a className="rounded-md border px-3 py-1.5 text-sm no-underline text-foreground" href={`tel:+${telefono}`}>
+            <a
+              className="rounded-md border px-3 py-1.5 text-sm no-underline text-foreground"
+              href={`tel:+${telefono}`}
+            >
               Chiama +{telefono}
             </a>
           )}
@@ -295,7 +341,11 @@ const Scheda = ({ r, campoTitolo }: { r: Riga; campoTitolo: string }) => {
           Ultima modifica {r.modificato_da}, {dataOra(r.modificato_il)}
         </div>
       )}
-      {salva.isError && <div className="text-xs text-red-700">Non salvato: {String((salva.error as any)?.message)}</div>}
+      {salva.isError && (
+        <div className="text-xs text-red-700">
+          Non salvato: {String((salva.error as any)?.message)}
+        </div>
+      )}
     </div>
   );
 };
@@ -306,10 +356,16 @@ export const SezionePage = () => {
   const s = lettera.toUpperCase();
   const meta = SEZIONI[s];
   const { data: info, isPending: infoInCarico } = useInfo();
-  const [filtro, setFiltro] = useState<"da_fare" | "fatti" | "tutti" | "spente">("da_fare");
+  const [filtro, setFiltro] = useState<
+    "da_fare" | "fatti" | "tutti" | "spente"
+  >("da_fare");
   const [gruppo, setGruppo] = useState<string>("");
   const [cerca, setCerca] = useState("");
-  const { data: righe, isPending, error } = useQuery({
+  const {
+    data: righe,
+    isPending,
+    error,
+  } = useQuery({
     queryKey: ["sezione_righe", s],
     enabled: !!meta && s !== "F" && !meta.inArrivo,
     queryFn: async () => {
@@ -325,7 +381,9 @@ export const SezionePage = () => {
   });
   const gruppi = useMemo(() => {
     const c: Record<string, number> = {};
-    (righe ?? []).filter((r) => r.attiva && !r.fatto).forEach((r) => (c[r.gruppo ?? ""] = (c[r.gruppo ?? ""] ?? 0) + 1));
+    (righe ?? [])
+      .filter((r) => r.attiva && !r.fatto)
+      .forEach((r) => (c[r.gruppo ?? ""] = (c[r.gruppo ?? ""] ?? 0) + 1));
     return c;
   }, [righe]);
   const visibili = (righe ?? []).filter((r) => {
@@ -333,7 +391,11 @@ export const SezionePage = () => {
     if (filtro === "fatti" && !r.fatto) return false;
     if (filtro === "spente" && r.attiva) return false;
     if (gruppo && r.gruppo !== gruppo) return false;
-    if (cerca && !JSON.stringify(r.dati).toLowerCase().includes(cerca.toLowerCase())) return false;
+    if (
+      cerca &&
+      !JSON.stringify(r.dati).toLowerCase().includes(cerca.toLowerCase())
+    )
+      return false;
     return true;
   });
 
@@ -351,16 +413,27 @@ export const SezionePage = () => {
         </h1>
         <p className="text-sm text-muted-foreground">{meta.descrizione}</p>
         <p className="text-xs text-muted-foreground mt-1">
-          {i ? `Aggiornata il ${dataOra(i.aggiornato_il)}` : infoInCarico ? "..." : "Non ancora aggiornata"}, {meta.frequenza}.
+          {i
+            ? `Aggiornata il ${dataOra(i.aggiornato_il)}`
+            : infoInCarico
+              ? "..."
+              : "Non ancora aggiornata"}
+          , {meta.frequenza}.
         </p>
       </div>
 
-      {meta.inArrivo && <div className="rounded-lg border bg-card p-4 text-sm">{meta.inArrivo}.</div>}
+      {meta.inArrivo && (
+        <div className="rounded-lg border bg-card p-4 text-sm">
+          {meta.inArrivo}.
+        </div>
+      )}
       {s === "F" &&
         (i ? (
           <TabelleSP r={riepilogo} />
         ) : (
-          <div className="text-sm text-muted-foreground">{infoInCarico ? "Carico..." : "Nessun dato ancora."}</div>
+          <div className="text-sm text-muted-foreground">
+            {infoInCarico ? "Carico..." : "Nessun dato ancora."}
+          </div>
         ))}
 
       {s !== "F" && !meta.inArrivo && (
@@ -402,14 +475,26 @@ export const SezionePage = () => {
               onChange={(e) => setCerca(e.target.value)}
             />
           </div>
-          {isPending && <div className="text-sm text-muted-foreground">Carico...</div>}
-          {error && <div className="text-sm text-red-700">Errore: {String((error as any).message)}</div>}
+          {isPending && (
+            <div className="text-sm text-muted-foreground">Carico...</div>
+          )}
+          {error && (
+            <div className="text-sm text-red-700">
+              Errore: {String((error as any).message)}
+            </div>
+          )}
           {!isPending && visibili.length === 0 && (
-            <div className="text-sm text-muted-foreground">Niente da mostrare con questi filtri.</div>
+            <div className="text-sm text-muted-foreground">
+              Niente da mostrare con questi filtri.
+            </div>
           )}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {visibili.map((r) => (
-              <Scheda key={r.chiave} r={r} campoTitolo={meta.titoloRiga ?? "Cliente"} />
+              <Scheda
+                key={r.chiave}
+                r={r}
+                campoTitolo={meta.titoloRiga ?? "Cliente"}
+              />
             ))}
           </div>
         </>
@@ -420,12 +505,24 @@ export const SezionePage = () => {
 
 const Riepilogo = ({ s, r }: { s: string; r: any }) => {
   const voci: [string, any][] = [];
-  if (s === "A") voci.push(["Titoli", r.totale], ["Premio", r.premio != null ? `${numero(r.premio)} €` : null]);
-  if (s === "B")
-    (Array.isArray(r.conteggi) ? r.conteggi : Object.entries(r.conteggi ?? {})).forEach(([k, v]: [string, any]) =>
-      voci.push([k, v]),
+  if (s === "A")
+    voci.push(
+      ["Titoli", r.totale],
+      ["Premio", r.premio != null ? `${numero(r.premio)} €` : null],
     );
-  if (s === "D") voci.push(["Pratiche aperte", r.totale], ["Da recuperare", r.da_recuperare != null ? `${numero(r.da_recuperare)} €` : null]);
+  if (s === "B")
+    (Array.isArray(r.conteggi)
+      ? r.conteggi
+      : Object.entries(r.conteggi ?? {})
+    ).forEach(([k, v]: [string, any]) => voci.push([k, v]));
+  if (s === "D")
+    voci.push(
+      ["Pratiche aperte", r.totale],
+      [
+        "Da recuperare",
+        r.da_recuperare != null ? `${numero(r.da_recuperare)} €` : null,
+      ],
+    );
   if (s === "E")
     voci.push(...(Object.entries(r.per_stato ?? {}) as [string, any][]), [
       "Aumento in attesa",
@@ -440,7 +537,8 @@ const Riepilogo = ({ s, r }: { s: string; r: any }) => {
     <div className="flex flex-wrap gap-2">
       {vis.map(([k, v]) => (
         <div key={k} className="rounded-md border bg-card px-3 py-1.5 text-sm">
-          <span className="text-muted-foreground">{k}</span> <span className="font-semibold tabular-nums">{v}</span>
+          <span className="text-muted-foreground">{k}</span>{" "}
+          <span className="font-semibold tabular-nums">{v}</span>
         </div>
       ))}
       {s === "G" && r.dal && (

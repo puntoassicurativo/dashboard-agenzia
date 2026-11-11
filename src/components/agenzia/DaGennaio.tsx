@@ -15,19 +15,23 @@ type Somme = {
   avanzo: number;
   altre_uscite: number;
 };
+type Totali = {
+  entrate: number;
+  uscite: number;
+  utile: number;
+  prelievi_soci: number;
+  entrate_una_tantum: number;
+  uscite_una_tantum?: number;
+  su_100_uscite: number | null;
+};
 export type Anno = {
   anno: string;
   mesi: string[];
   dal: string | null;
   al: string | null;
-  cassa_257: {
-    entrate: number;
-    uscite: number;
-    utile: number;
-    prelievi_soci: number;
-    entrate_una_tantum: number;
-    su_100_uscite: number | null;
-  };
+  cassa_257: Totali;
+  /** dall'11/11/2026: provvigioni maturate e costi con i broker (null finche' l'agente non lo scrive) */
+  modello?: Totali | null;
   voci: {
     entrate: Record<string, number>;
     uscite: Record<string, number>;
@@ -143,7 +147,7 @@ export const DaGennaio = () => {
     );
   const { a, aggiornato } = data;
   if (!a.al) return null;
-  const c = a.cassa_257;
+  const c = a.modello ?? a.cassa_257;
   const p = a.proiezione;
   const finoA = `${nomeMese(a.al)} ${a.anno}`;
   return (
@@ -158,11 +162,20 @@ export const DaGennaio = () => {
         <Numero
           titolo="Entrate da gennaio"
           valore={euro(c.entrate)}
-          nota="girato dal conto premi al conto gestionale 257 e altre entrate"
+          nota={
+            a.modello
+              ? "provvigioni maturate (foglio Saldi) e altre entrate del 257"
+              : "girato dal conto premi al conto gestionale 257 e altre entrate"
+          }
         />
         <Numero
           titolo="Uscite dell'agenzia da gennaio"
           valore={euro(c.uscite)}
+          nota={
+            a.modello
+              ? "conto gestionale 257, broker e uscite una tantum del foglio"
+              : undefined
+          }
         />
         <Numero
           titolo="Utile da gennaio"

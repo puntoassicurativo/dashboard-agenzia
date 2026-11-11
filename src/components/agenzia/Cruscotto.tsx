@@ -63,18 +63,8 @@ type Riga = {
 };
 
 const MESI = [
-  "gennaio",
-  "febbraio",
-  "marzo",
-  "aprile",
-  "maggio",
-  "giugno",
-  "luglio",
-  "agosto",
-  "settembre",
-  "ottobre",
-  "novembre",
-  "dicembre",
+  "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
+  "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre",
 ];
 const MESI_BREVI = MESI.map((m) => m.slice(0, 3));
 
@@ -89,18 +79,11 @@ const euro = (v: number | null | undefined, decimali = 0) =>
         maximumFractionDigits: decimali,
         useGrouping: "always",
       } as unknown as Intl.NumberFormatOptions);
-const polizze = (n: number) =>
-  `${n >= 0 ? "+" : ""}${n} ${Math.abs(n) === 1 ? "polizza" : "polizze"}`;
+const polizze = (n: number) => `${n >= 0 ? "+" : ""}${n} ${Math.abs(n) === 1 ? "polizza" : "polizze"}`;
 const euroSegno = (v: number) => (v > 0 ? "+" : "") + euro(v);
 const dataIt = (iso: string | null) =>
-  iso
-    ? new Date(iso + "T12:00:00").toLocaleDateString("it-IT", {
-        day: "2-digit",
-        month: "2-digit",
-      })
-    : "";
-const nomeMese = (aaaa_mm: string) =>
-  MESI[parseInt(aaaa_mm.slice(5, 7), 10) - 1];
+  iso ? new Date(iso + "T12:00:00").toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" }) : "";
+const nomeMese = (aaaa_mm: string) => MESI[parseInt(aaaa_mm.slice(5, 7), 10) - 1];
 
 const useCruscotto = () =>
   useQuery({
@@ -118,17 +101,10 @@ const useCruscotto = () =>
 
 /** Variazione con freccia e parola, mai solo colore. */
 const Variazione = ({ pct, testo }: { pct: number | null; testo: string }) => {
-  if (pct == null)
-    return <span className="text-muted-foreground">{testo}: n.d.</span>;
+  if (pct == null) return <span className="text-muted-foreground">{testo}: n.d.</span>;
   const su = pct >= 0;
   return (
-    <span
-      className={
-        su
-          ? "text-green-700 dark:text-green-400"
-          : "text-red-700 dark:text-red-400"
-      }
-    >
+    <span className={su ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}>
       {su ? "▲" : "▼"} {su ? "+" : ""}
       {pct.toLocaleString("it-IT", { maximumFractionDigits: 1 })}% {testo}
     </span>
@@ -146,26 +122,15 @@ const Riquadro = ({
 }) => (
   <div className="rounded-lg border bg-card p-4 flex flex-col gap-1 min-w-0">
     <div className="text-sm text-muted-foreground">{titolo}</div>
-    <div className="text-3xl font-semibold tabular-nums tracking-tight">
-      {valore}
-    </div>
+    <div className="text-3xl font-semibold tabular-nums tracking-tight">{valore}</div>
     <div className="text-sm flex flex-col gap-0.5 tabular-nums">{children}</div>
   </div>
 );
 
-const RiquadroDelta = ({
-  titolo,
-  d,
-  mese,
-}: {
-  titolo: string;
-  d: DeltaLinea;
-  mese: string;
-}) => (
+const RiquadroDelta = ({ titolo, d, mese }: { titolo: string; d: DeltaLinea; mese: string }) => (
   <Riquadro titolo={titolo} valore={euroSegno(d.ytd.delta)}>
     <span className="text-muted-foreground">
-      da inizio anno, {polizze(d.ytd.delta_pezzi)} ({d.ytd.np_pezzi} nuove,{" "}
-      {d.ytd.ann_pezzi} perse)
+      da inizio anno, {polizze(d.ytd.delta_pezzi)} ({d.ytd.np_pezzi} nuove, {d.ytd.ann_pezzi} perse)
     </span>
     <span className="text-muted-foreground">
       anno scorso {euroSegno(d.ytd_ap.delta)}, {polizze(d.ytd_ap.delta_pezzi)}
@@ -181,32 +146,20 @@ const GraficoMesi = ({ mesi }: { mesi: Mese[] }) => {
   const scuro = document.documentElement.classList.contains("dark");
   const colori = scuro ? ["#3987e5", "#d95926"] : ["#2a78d6", "#eb6834"];
   const dati = mesi.map((m) => ({
-    mese:
-      MESI_BREVI[parseInt(m.mese.slice(5, 7), 10) - 1] +
-      (m.parziale ? "*" : ""),
+    mese: MESI_BREVI[parseInt(m.mese.slice(5, 7), 10) - 1] + (m.parziale ? "*" : ""),
     Auto: Math.round(m.incassi_auto),
     RE: Math.round(m.incassi_re),
   }));
   return (
     <div className="rounded-lg border bg-card p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
-        <h2 className="text-base font-semibold">
-          Incassi per mese, ultimi 12 mesi
-        </h2>
+        <h2 className="text-base font-semibold">Incassi per mese, ultimi 12 mesi</h2>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <span
-              className="inline-block w-3 h-3 rounded-sm"
-              style={{ background: colori[0] }}
-            />{" "}
-            Auto
+            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: colori[0] }} /> Auto
           </span>
           <span className="flex items-center gap-1.5">
-            <span
-              className="inline-block w-3 h-3 rounded-sm"
-              style={{ background: colori[1] }}
-            />{" "}
-            RE
+            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: colori[1] }} /> RE
           </span>
         </div>
       </div>
@@ -243,9 +196,7 @@ const GraficoMesi = ({ mesi }: { mesi: Mese[] }) => {
         />
       </div>
       <div className="mt-1 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-        <span>
-          * mese in corso, fino a ieri. Fonte titoli incassati (NA013).
-        </span>
+        <span>* mese in corso, fino a ieri. Fonte titoli incassati (NA013).</span>
         <button className="underline" onClick={() => setTabella(!tabella)}>
           {tabella ? "Nascondi tabella" : "Mostra tabella"}
         </button>
@@ -281,30 +232,16 @@ const GraficoMesi = ({ mesi }: { mesi: Mese[] }) => {
 
 export const Cruscotto = () => {
   const { data, isPending, error } = useCruscotto();
-  if (isPending)
-    return <div className="p-4 text-muted-foreground">Carico i dati...</div>;
-  if (error)
-    return (
-      <div className="p-4 text-red-700">
-        Errore nel caricare i dati: {String(error.message ?? error)}
-      </div>
-    );
-  if (!data)
-    return (
-      <div className="p-4 text-muted-foreground">
-        Nessun dato ancora: l'agente non ha ancora girato.
-      </div>
-    );
+  if (isPending) return <div className="p-4 text-muted-foreground">Carico i dati...</div>;
+  if (error) return <div className="p-4 text-red-700">Errore nel caricare i dati: {String(error.message ?? error)}</div>;
+  if (!data) return <div className="p-4 text-muted-foreground">Nessun dato ancora: l'agente non ha ancora girato.</div>;
 
   const v = data.valori;
   const p = v.provvigioni;
   const inc = v.incassi;
   const anno = data.data_dati.slice(0, 4);
   const aggiornato = new Date(data.aggiornato_il).toLocaleString("it-IT", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
+    day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
   });
 
   return (
@@ -323,18 +260,11 @@ export const Cruscotto = () => {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Riquadro
-          titolo={`Provvigioni di ${nomeMese(p.mese)}`}
-          valore={euro(p.valore)}
-        >
-          <Variazione
-            pct={p.cresc}
-            testo={`su ${nomeMese(p.mese)} ${parseInt(anno) - 1} (${euro(p.ap)})`}
-          />
+        <Riquadro titolo={`Provvigioni di ${nomeMese(p.mese)}`} valore={euro(p.valore)}>
+          <Variazione pct={p.cresc} testo={`su ${nomeMese(p.mese)} ${parseInt(anno) - 1} (${euro(p.ap)})`} />
           {p.ultimo_mese_chiuso && (
             <span className="text-muted-foreground">
-              {nomeMese(p.ultimo_mese_chiuso.mese)} chiuso{" "}
-              {euro(p.ultimo_mese_chiuso.totale)}
+              {nomeMese(p.ultimo_mese_chiuso.mese)} chiuso {euro(p.ultimo_mese_chiuso.totale)}
             </span>
           )}
         </Riquadro>
@@ -350,10 +280,7 @@ export const Cruscotto = () => {
           )}
         </Riquadro>
 
-        <Riquadro
-          titolo={`Incassi da inizio ${anno}`}
-          valore={euro(inc.totale)}
-        >
+        <Riquadro titolo={`Incassi da inizio ${anno}`} valore={euro(inc.totale)}>
           <Variazione pct={inc.cresc_totale} testo="sull'anno scorso" />
           <span>
             Auto {euro(inc.auto)} <Variazione pct={inc.cresc_auto} testo="" />
@@ -368,13 +295,8 @@ export const Cruscotto = () => {
 
         <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground flex flex-col gap-1">
           <div className="text-foreground font-medium">Come leggere</div>
-          <span>
-            Delta = nuova produzione meno annullamenti, in premio imponibile.
-          </span>
-          <span>
-            Auto e RE come nella mail di Vittoria: gli infortuni del conducente
-            stanno nel RE.
-          </span>
+          <span>Delta = nuova produzione meno annullamenti, in premio imponibile.</span>
+          <span>Auto e RE come nella mail di Vittoria: gli infortuni del conducente stanno nel RE.</span>
           <span>Confronti sullo stesso periodo dell'anno scorso.</span>
         </div>
       </div>

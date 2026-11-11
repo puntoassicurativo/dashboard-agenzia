@@ -19,7 +19,10 @@ import {
   Spese222,
 } from "./ContoAgenzia";
 import { type Anno, DaGennaio, useBloccoAnno } from "./DaGennaio";
+import { Estratti } from "./Estratti";
+import { AvvisoUtile, FiscaleBlocco, useBloccoFiscale } from "./Fiscale";
 import { MeseVirtuoso } from "./MeseVirtuoso";
+import { Pna } from "./Pna";
 
 type Voci = Record<string, number>;
 type Dettaglio = Record<string, { chi: string; importo: number }[]>;
@@ -562,6 +565,7 @@ const Tasse = ({ info }: { info: Info }) => {
 export const AndamentoPage = () => {
   const accesso = useAccessoUtile();
   const anno = useBloccoAnno();
+  const fiscale = useBloccoFiscale();
   const { data, isPending, error } = useAndamento();
   const completi = (data?.mesi ?? []).filter((m) => !m.valori.parziale);
   const [scelto, setScelto] = useState<string | null>(null);
@@ -594,11 +598,11 @@ export const AndamentoPage = () => {
   const prec = idx > 0 ? completi[idx - 1] : undefined;
   const ultimi = completi.slice(-12);
   const prelievi = Object.entries(m.valori.sotto)
-    .filter(([k]) => k.toLowerCase().includes("soci"))
+    .filter(([k]) => /soci/i.test(k) && !/imposte/i.test(k))
     .reduce((s, [, v]) => s + v, 0);
   const prelieviPrec = prec
     ? Object.entries(prec.valori.sotto)
-        .filter(([k]) => k.toLowerCase().includes("soci"))
+        .filter(([k]) => /soci/i.test(k) && !/imposte/i.test(k))
         .reduce((s, [, v]) => s + v, 0)
     : undefined;
   const info = data.info;
@@ -622,6 +626,7 @@ export const AndamentoPage = () => {
           </select>
         </label>
       </div>
+      {fiscale.data && <AvvisoUtile f={fiscale.data} />}
       <MeseVirtuoso mese={m.mese} />
       <DaGennaio />
 
@@ -629,11 +634,12 @@ export const AndamentoPage = () => {
         Entrate, uscite e utile dell'agenzia
       </h2>
       <p className="text-sm text-muted-foreground -mt-2">
-        Entrate: provvigioni maturate del foglio Saldi e altre entrate del conto
+        Entrate: provvigioni maturate del foglio Saldi, incentivi e contributi
+        della compagnia (partite non assicurative) e altre entrate del conto
         gestionale 257. Uscite: quelle del conto gestionale 257 di Banca di Asti
-        {info ? ` (estratto aggiornato al ${dataIt(info.periodo.al)})` : ""} e
-        le provvigioni lasciate ai broker. Utile = entrate meno tutte le uscite,
-        IVA compresa.
+        {info ? ` (estratto aggiornato al ${dataIt(info.periodo.al)})` : ""}, le
+        provvigioni lasciate ai broker e le trattenute della compagnia. Utile =
+        entrate meno tutte le uscite, IVA compresa.
       </p>
       <p className="text-sm font-medium -mt-2">
         I prelievi di Fabio e Claudio NON sono dentro le uscite: sono la
@@ -678,6 +684,7 @@ export const AndamentoPage = () => {
       {m.valori.ponte && (
         <PonteBanca p={m.valori.ponte} mese={nomeMese(m.mese)} />
       )}
+      <Pna mese={m.mese} />
       <GraficoUtile mesi={ultimi} />
       <VociMese m={m} />
       {data.modello && m.valori.movimenti && (
@@ -686,6 +693,7 @@ export const AndamentoPage = () => {
       <h2 className="text-base font-semibold -mb-2">Mese per mese</h2>
       <TabellaMesi mesi={ultimi} anno={anno.data?.a} />
       {data.modello && <DaClassificare info={data.modello} />}
+      <Estratti />
       {data.modello && <CosaManca voci={data.modello.cosa_manca} />}
       {data.modello && data.modello.spese_222.length > 0 && (
         <Spese222
@@ -694,7 +702,11 @@ export const AndamentoPage = () => {
           applicate={data.modello.correzioni_applicate ?? []}
         />
       )}
-      {info && <Tasse info={info} />}
+      {fiscale.data ? (
+        <FiscaleBlocco f={fiscale.data} mese={m.mese} />
+      ) : (
+        info && <Tasse info={info} />
+      )}
 
       {info && (
         <div className="rounded-lg border bg-card p-4 text-sm">

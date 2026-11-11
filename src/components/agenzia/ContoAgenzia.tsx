@@ -16,6 +16,14 @@ export type Ponte = {
   tornato_conto_premi: number;
   girato_desio: number;
   rimasto_conto_premi: number;
+  uscite_222?: number;
+  pagato_dal_conto_premi?: number;
+  pna_ricavi?: number;
+  pna_trattenute?: number;
+  pna_nette?: number;
+  desio_entrate?: number;
+  desio_uscite?: number;
+  desio_netto?: number;
 };
 export type Spesa222 = {
   chi: string;
@@ -101,6 +109,20 @@ export const PonteBanca = ({ p, mese }: { p: Ponte; mese: string }) => (
           valore={p.altre_entrate_257}
         />
       )}
+      {!!p.pna_ricavi && (
+        <Riga
+          segno="+"
+          nome="Incentivi e contributi della compagnia (partite non assicurative)"
+          valore={p.pna_ricavi}
+        />
+      )}
+      {!!p.desio_entrate && (
+        <Riga
+          segno="+"
+          nome="Altre entrate sui conti di Banco Desio"
+          valore={p.desio_entrate}
+        />
+      )}
       <Riga segno="-" nome="Provvigioni lasciate ai broker" valore={p.broker} />
       {p.una_tantum_foglio !== 0 && (
         <Riga
@@ -114,6 +136,27 @@ export const PonteBanca = ({ p, mese }: { p: Ponte; mese: string }) => (
         nome="Uscite dell'agenzia dal conto gestionale 257"
         valore={p.uscite_257}
       />
+      {!!p.desio_uscite && (
+        <Riga
+          segno="-"
+          nome="Uscite dell'agenzia dai conti di Banco Desio"
+          valore={p.desio_uscite}
+        />
+      )}
+      {!!p.uscite_222 && (
+        <Riga
+          segno="-"
+          nome="Spese pagate dal conto premi 222"
+          valore={p.uscite_222}
+        />
+      )}
+      {!!p.pna_trattenute && (
+        <Riga
+          segno="-"
+          nome="Trattenute della compagnia"
+          valore={p.pna_trattenute}
+        />
+      )}
       <Riga
         segno="="
         nome="Utile dell'agenzia"
@@ -132,6 +175,24 @@ export const PonteBanca = ({ p, mese }: { p: Ponte; mese: string }) => (
         nome="rimasto sul conto premi (avanzo del foglio Saldi)"
         valore={p.rimasto_conto_premi}
       />
+      {!!p.pna_nette && (
+        <Riga
+          nome="partite non assicurative nette, pagate sul conto gestionale di Banco Desio"
+          valore={p.pna_nette}
+        />
+      )}
+      {!!p.desio_netto && (
+        <Riga
+          nome="entrate meno uscite dell'agenzia sui conti di Banco Desio"
+          valore={p.desio_netto}
+        />
+      )}
+      {!!p.pagato_dal_conto_premi && (
+        <Riga
+          nome="pagato dal conto premi 222"
+          valore={p.pagato_dal_conto_premi}
+        />
+      )}
       {p.tornato_conto_premi !== 0 && (
         <Riga
           nome="tornato dal 257 al conto premi, o scritto diverso nel foglio"

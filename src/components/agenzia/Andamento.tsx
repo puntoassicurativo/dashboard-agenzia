@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
+import { MeseVirtuoso } from "./MeseVirtuoso";
 
 type Voci = Record<string, number>;
 type Dettaglio = Record<string, { chi: string; importo: number }[]>;
@@ -462,8 +463,13 @@ export const AndamentoPage = () => {
           </select>
         </label>
       </div>
+      <MeseVirtuoso mese={m.mese} />
+
+      <h2 className="text-lg font-semibold mt-4">
+        Il conto gestionale 257 di Banca di Asti
+      </h2>
       <p className="text-sm text-muted-foreground -mt-2">
-        Dal conto operativo 257 di Banca di Asti
+        Dal conto gestionale 257 di Banca di Asti
         {info ? `, estratto aggiornato al ${dataIt(info.periodo.al)}` : ""}.
         Utile vero = entrate meno tutte le uscite, IVA compresa. I prelievi dei
         soci stanno sotto l'utile.

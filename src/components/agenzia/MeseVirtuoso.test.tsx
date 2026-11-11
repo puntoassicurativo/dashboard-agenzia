@@ -1,0 +1,169 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { describe, expect, it, vi } from "vitest";
+import { render } from "vitest-browser-react";
+
+import { MeseVirtuoso, type SaldiMese } from "./MeseVirtuoso";
+
+// Dati inventati: nel repository non vanno numeri veri dell'agenzia.
+const base: SaldiMese = {
+  provvigioni: 1000,
+  bo_provvigioni: 990,
+  diff_bo: 10,
+  girato_asti: 600,
+  girato_desio: 200,
+  broker: 100,
+  broker_dettaglio: { "ab broker": 70, uiafin: 30 },
+  una_tantum: 0,
+  altre_uscite: 0,
+  tot_uscite: 900,
+  avanzo: 100,
+  avanzo_da_gennaio: -50,
+  saldo_conto_premi: 1234.56,
+  altre_entrate: [
+    {
+      riga: 9,
+      data: "2030-03-20",
+      importo: 25,
+      descrizione: "entrata di prova",
+    },
+  ],
+  uscite_altro: [],
+  parziale: false,
+  al: null,
+  controlli_bo: [
+    {
+      data: "2030-03-10",
+      righe: [5],
+      saldi_c: 110,
+      saldi_h_i: 100,
+      bo: 100,
+      diff_c: 10,
+      tipo: "refuso_c",
+    },
+  ],
+  avanzo_corretto_bo: 90,
+  banca: {
+    saldi_asti: 600,
+    banca_222_257: 600,
+    saldi_desio: 200,
+    banca_222_desio: 150,
+    banca_desio_interni: 50,
+    parziale: false,
+    solo_saldi: [],
+    solo_banca: [],
+    scritto_su_altro_conto: [],
+    dal_222_ai_soci: [],
+  },
+};
+const negativo: SaldiMese = {
+  ...base,
+  una_tantum: 300,
+  tot_uscite: 1200,
+  avanzo: -200,
+  uscite_altro: [
+    {
+      riga: 12,
+      data: "2030-02-28",
+      importo: 300,
+      descrizione: "uscita una tantum",
+      sottotipo: "una_tantum",
+    },
+  ],
+  avanzo_corretto_bo: null,
+  controlli_bo: [],
+  altre_entrate: [],
+};
+
+const righe = [
+  { mese: "2030-02", valori: negativo, aggiornato_il: "2030-04-02T06:30:00Z" },
+  { mese: "2030-03", valori: base, aggiornato_il: "2030-04-02T06:30:00Z" },
+  {
+    mese: "info",
+    valori: { ultimo_giorno: "2030-04-01", bo_aggiornato: "2030-04-02" },
+    aggiornato_il: "2030-04-02T06:30:00Z",
+  },
+];
+
+vi.mock("../atomic-crm/providers/supabase/supabase", () => ({
+  getSupabaseClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          order: () => Promise.resolve({ data: righe, error: null }),
+        }),
+      }),
+    }),
+  }),
+}));
+
+const mostra = (mese: string) =>
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <MeseVirtuoso mese={mese} />
+    </QueryClientProvider>,
+  );
+
+describe("MeseVirtuoso", () => {
+  it("mostra il mese con avanzo positivo e i suoi numeri", async () => {
+    const screen = await mostra("2030-03");
+    await expect
+      .element(
+        screen.getByRole("heading", { name: "Il mese è stato virtuoso?" }),
+      )
+      .toBeVisible();
+    await expect.element(screen.getByText("Sì", { exact: true })).toBeVisible();
+    await expect
+      .element(
+        screen.getByText(/A marzo le provvigioni sono state 1\.000 euro/),
+      )
+      .toBeVisible();
+    await expect
+      .element(screen.getByText("Asti 600,00 €, Desio 200,00 €"))
+      .toBeVisible();
+    await expect.element(screen.getByText(/AB broker 70,00\s€/)).toBeVisible();
+    await expect
+      .element(screen.getByText("Corretto con BO: 90,00 €"))
+      .toBeVisible();
+    await expect
+      .element(
+        screen.getByText("Saldo del conto premi a fine mese (foglio Saldi)"),
+      )
+      .toBeVisible();
+    await expect.element(screen.getByText(/non sono un ricavo/)).toBeVisible();
+  });
+
+  it("mostra il mese in perdita in rosso, con l'una tantum senza dettagli", async () => {
+    const screen = await mostra("2030-02");
+    await expect.element(screen.getByText("No", { exact: true })).toBeVisible();
+    await expect
+      .element(screen.getByText(/di cui 300 di uscita una tantum/))
+      .toBeVisible();
+    await expect.element(screen.getByText(/uscita una tantum$/)).toBeVisible();
+    expect(screen.container.textContent).not.toMatch(/Corretto con BO/);
+    expect(screen.container.textContent?.toLowerCase()).not.toMatch(
+      /gruzzolet/,
+    );
+  });
+
+  it("apre i controlli e spiega il refuso", async () => {
+    const screen = await mostra("2030-03");
+    await screen.getByText("Controlli sul foglio Saldi").click();
+    await expect
+      .element(
+        screen.getByText(/probabile refuso nella colonna delle provvigioni/),
+      )
+      .toBeVisible();
+    await expect
+      .element(
+        screen.getByText(/Verso Desio: foglio 200,00\s€,\s+banca\s+200,00\s€/),
+      )
+      .toBeVisible();
+  });
+
+  it("dice quando il mese non ha dati", async () => {
+    const screen = await mostra("2029-01");
+    await expect
+      .element(screen.getByText(/non ci sono ancora i dati del foglio Saldi/))
+      .toBeVisible();
+  });
+});

@@ -1,8 +1,8 @@
 /**
- * Blocco "Il mese è stato virtuoso?" della pagina Andamento: provvigioni maturate del mese (foglio Saldi,
- * colonna C) contro quello che è uscito dal conto premi (giroconti verso Asti e Desio, provvigioni ai broker).
- * Legge andamento_blocchi tipo "saldi", scritto ogni mattina dall'agente agenti\cruscotto_agenzia (saldi_mese.py).
- * Riservato come il resto della pagina: la RLS fa leggere solo gli utenti in utile_accesso.
+ * "Was the month virtuous?" block of the Andamento page: commissions accrued in the month (Saldi sheet,
+ * column C) against what left the premium account (transfers to Asti and Desio, commissions left to brokers).
+ * Reads andamento_blocchi type "saldi", written every morning by the local agent (saldi_mese.py).
+ * Restricted like the rest of the page: RLS only lets users listed in utile_accesso read it.
  */
 import { ResponsiveBar } from "@nivo/bar";
 import { useQuery } from "@tanstack/react-query";

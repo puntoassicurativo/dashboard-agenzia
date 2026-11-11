@@ -1,7 +1,9 @@
+import { Tendina } from "./Tendina";
+
 /**
- * Parti della pagina Andamento che seguono il modello dei conti (piano 11/11/2026, fase 4): il ponte con la banca
- * ("Dove sono finite le provvigioni del mese"), le spese pagate dal conto premi 222 con la voce proposta, e il
- * riquadro "Cosa non c'è ancora in questi numeri". Dati: andamento_blocchi tipo "modello" (agente, modello.py).
+ * Andamento page parts that follow the accounting model: the bank bridge ("where did this month's
+ * commissions go"), expenses paid from premium account 222 with a proposed category, the uncategorized
+ * outflows and the "not yet in these numbers" box. Data: andamento_blocchi type "modello" (agent, modello.py).
  */
 export type Ponte = {
   provvigioni: number;
@@ -17,7 +19,12 @@ export type Ponte = {
 };
 export type Spesa222 = {
   chi: string;
-  movimenti: { data: string; importo: number }[];
+  movimenti: {
+    data: string;
+    importo: number;
+    chiave?: string;
+    voce?: string | null;
+  }[];
   totale: number;
   proposta: string;
   nota: string;
@@ -28,6 +35,19 @@ export type InfoModello = {
   gruppi: Record<string, string[]>;
   spese_222: Spesa222[];
   cosa_manca: string[];
+  voci_tendina?: string[];
+  da_classificare?: {
+    chiave: string;
+    giorno: string;
+    importo: number;
+    chi: string;
+  }[];
+  correzioni_applicate?: string[];
+  correzioni_non_trovate?: {
+    chiave: string;
+    voce: string;
+    quando: string | null;
+  }[];
 };
 
 const euro = (v: number | null | undefined, decimali = 2) =>
@@ -126,7 +146,15 @@ export const PonteBanca = ({ p, mese }: { p: Ponte; mese: string }) => (
   </div>
 );
 
-export const Spese222 = ({ spese }: { spese: Spesa222[] }) => (
+export const Spese222 = ({
+  spese,
+  voci,
+  applicate,
+}: {
+  spese: Spesa222[];
+  voci: string[];
+  applicate: string[];
+}) => (
   <details className="rounded-lg border bg-card p-4 text-sm">
     <summary className="cursor-pointer select-none text-base font-semibold">
       Spese pagate dal conto premi 222{" "}
@@ -137,7 +165,8 @@ export const Spese222 = ({ spese }: { spese: Spesa222[] }) => (
     <p className="mt-2 text-muted-foreground">
       Dal conto premi dovrebbero uscire solo premi e giroconti. Queste uscite
       non sono né premi a Vittoria né giroconti fra i conti dell'agenzia. Per
-      ognuna c'è una proposta: per ora nessuna è contata nei costi.
+      ognuna c'è una proposta: entra nei conti solo quando qualcuno la sceglie
+      con la tendina e la salva.
     </p>
     <ul className="mt-2">
       {spese.map((s) => (
@@ -147,11 +176,113 @@ export const Spese222 = ({ spese }: { spese: Spesa222[] }) => (
             <span>{euro(s.totale)}</span>
           </div>
           <div className="text-muted-foreground">
-            Proposta: {s.proposta}, {s.nota}.{" "}
-            {s.movimenti.length === 1
-              ? `Il ${dataIt(s.movimenti[0].data)}.`
-              : `${s.movimenti.length} movimenti dal ${dataIt(s.movimenti[0].data)} al ${dataIt(s.movimenti[s.movimenti.length - 1].data)}.`}
+            Proposta: {s.proposta}, {s.nota}.
           </div>
+          <ul className="mt-1 pl-3">
+            {s.movimenti.map((x, i) => (
+              <li key={x.chiave ?? i} className="py-1">
+                <span className="tabular-nums">
+                  {dataIt(x.data)} {euro(x.importo)}
+                </span>
+                {x.chiave && (
+                  <Tendina
+                    chiave={x.chiave}
+                    voci={voci}
+                    applicate={applicate}
+                    proposta={s.proposta}
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ul>
+  </details>
+);
+
+/** Outflows of account 257 the agent cannot categorize, each with the category picker. */
+export const DaClassificare = ({ info }: { info: InfoModello }) => {
+  const lista = info.da_classificare ?? [];
+  const perse = info.correzioni_non_trovate ?? [];
+  if (lista.length === 0 && perse.length === 0) return null;
+  return (
+    <div className="rounded-lg border bg-card p-4 text-sm">
+      <h3 className="text-base font-semibold">
+        Uscite che l'agente non sa dove mettere{" "}
+        <span className="font-normal text-muted-foreground">
+          ({lista.length})
+        </span>
+      </h3>
+      <p className="mt-1 text-muted-foreground">
+        Scegli la voce giusta e salva: dal prossimo aggiornamento il movimento
+        entra in quella voce.
+      </p>
+      <ul className="mt-2">
+        {lista.map((x) => (
+          <li key={x.chiave} className="border-t py-1.5">
+            <div className="flex flex-wrap justify-between gap-x-3 tabular-nums">
+              <span>
+                {dataIt(x.giorno)} {x.chi}
+              </span>
+              <span>{euro(x.importo)}</span>
+            </div>
+            <Tendina
+              chiave={x.chiave}
+              voci={info.voci_tendina ?? []}
+              applicate={info.correzioni_applicate ?? []}
+            />
+          </li>
+        ))}
+      </ul>
+      {perse.length > 0 && (
+        <div className="mt-3 rounded border border-red-300 bg-red-50 p-2 dark:border-red-800 dark:bg-red-950/40">
+          Correzioni che non trovano più il loro movimento (l'estratto conto è
+          cambiato): {perse.map((x) => x.voce).join(", ")}. Vanno rifatte.
+        </div>
+      )}
+    </div>
+  );
+};
+
+/** Collapsible list of every outflow of the month, to correct categories the agent already assigned. */
+export const CorreggiVoce = ({
+  movimenti,
+  info,
+}: {
+  movimenti: {
+    chiave: string;
+    data: string;
+    importo: number;
+    chi: string;
+    voce: string;
+  }[];
+  info: InfoModello;
+}) => (
+  <details className="rounded-lg border bg-card p-4 text-sm">
+    <summary className="cursor-pointer select-none text-base font-semibold">
+      Correggi una voce{" "}
+      <span className="font-normal text-muted-foreground">
+        ({movimenti.length} uscite del mese)
+      </span>
+    </summary>
+    <ul className="mt-2">
+      {movimenti.map((x) => (
+        <li key={x.chiave} className="border-t py-1">
+          <details>
+            <summary className="flex cursor-pointer flex-wrap justify-between gap-x-3 tabular-nums">
+              <span>
+                {dataIt(x.data)} {x.chi}{" "}
+                <span className="text-muted-foreground">({x.voce})</span>
+              </span>
+              <span>{euro(x.importo)}</span>
+            </summary>
+            <Tendina
+              chiave={x.chiave}
+              voci={info.voci_tendina ?? []}
+              applicate={info.correzioni_applicate ?? []}
+            />
+          </details>
         </li>
       ))}
     </ul>

@@ -4,7 +4,7 @@ import { render } from "vitest-browser-react";
 
 import { MeseVirtuoso, type SaldiMese } from "./MeseVirtuoso";
 
-// Dati inventati: nel repository non vanno numeri veri dell'agenzia.
+// Invented data: real agency figures never go into the repository.
 const base: SaldiMese = {
   provvigioni: 1000,
   bo_provvigioni: 990,
@@ -104,7 +104,7 @@ const mostra = (mese: string) =>
   );
 
 describe("MeseVirtuoso", () => {
-  it("mostra il mese con avanzo positivo e i suoi numeri", async () => {
+  it("shows a month with a positive surplus and its figures", async () => {
     const screen = await mostra("2030-03");
     await expect
       .element(
@@ -132,7 +132,7 @@ describe("MeseVirtuoso", () => {
     await expect.element(screen.getByText(/non sono un ricavo/)).toBeVisible();
   });
 
-  it("mostra il mese in perdita in rosso, con l'una tantum senza dettagli", async () => {
+  it("shows a negative month in red, with the one-off outflow without details", async () => {
     const screen = await mostra("2030-02");
     await expect.element(screen.getByText("No", { exact: true })).toBeVisible();
     await expect
@@ -145,7 +145,7 @@ describe("MeseVirtuoso", () => {
     );
   });
 
-  it("apre i controlli e spiega il refuso", async () => {
+  it("opens the checks and explains the typo", async () => {
     const screen = await mostra("2030-03");
     await screen.getByText("Controlli sul foglio Saldi").click();
     await expect
@@ -160,7 +160,7 @@ describe("MeseVirtuoso", () => {
       .toBeVisible();
   });
 
-  it("dice quando il mese non ha dati", async () => {
+  it("says when the month has no data", async () => {
     const screen = await mostra("2029-01");
     await expect
       .element(screen.getByText(/non ci sono ancora i dati del foglio Saldi/))

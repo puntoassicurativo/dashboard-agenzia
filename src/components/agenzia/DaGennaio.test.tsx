@@ -4,7 +4,7 @@ import { render } from "vitest-browser-react";
 
 import { type Anno, DaGennaio } from "./DaGennaio";
 
-// Dati inventati: nel repository non vanno numeri veri dell'agenzia.
+// Invented data: real agency figures never go into the repository.
 const anno: Anno = {
   anno: "2030",
   mesi: ["2030-01", "2030-02", "2030-03"],
@@ -81,7 +81,7 @@ vi.mock("../atomic-crm/providers/supabase/supabase", () => ({
 }));
 
 describe("DaGennaio", () => {
-  it("mostra il contatore dell'anno, il mese in corso a parte e la stima", async () => {
+  it("shows the year counter, the current month apart and the projection", async () => {
     const screen = await render(
       <QueryClientProvider client={new QueryClient()}>
         <DaGennaio />

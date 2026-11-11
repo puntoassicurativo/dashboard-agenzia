@@ -10,7 +10,9 @@ import { Fragment, useState } from "react";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
 import {
+  CorreggiVoce,
   CosaManca,
+  DaClassificare,
   type InfoModello,
   type Ponte,
   PonteBanca,
@@ -34,6 +36,13 @@ type ValoriMese = {
   dal: string;
   al: string;
   ponte?: Ponte;
+  movimenti?: {
+    chiave: string;
+    data: string;
+    importo: number;
+    chi: string;
+    voce: string;
+  }[];
 };
 type RigaMese = { mese: string; valori: ValoriMese };
 type Info = {
@@ -111,8 +120,8 @@ const useAndamento = () =>
       ]);
       if (m.error) throw m.error;
       if (i.error) throw i.error;
-      // dall'11/11/2026 i mesi seguono il modello (provvigioni maturate, broker): se l'agente li ha scritti
-      // si usano al posto della sola cassa del 257
+      // since 2026-11-11 months follow the accounting model (accrued commissions, brokers): when the agent
+      // wrote them they replace the plain cash view of account 257
       const modello = new Map(
         ((mo.data ?? []) as { mese: string; valori: unknown }[]).map((r) => [
           r.mese,
@@ -213,7 +222,7 @@ const GRUPPO_PERSONALE = [
   "Subagenti e collaboratori (bonifici netti)",
   "F24: ritenute e contributi di dipendenti e subagenti, IRAP",
 ];
-/** Voci di uscita con le tre del personale per prime, vicine, sotto un titolo comune. */
+/** Outflow categories with the three staff-related ones first, next to each other under one heading. */
 const ordinaUscite = (chiavi: string[]) => [
   ...GRUPPO_PERSONALE.filter((k) => chiavi.includes(k)),
   ...chiavi.filter((k) => !GRUPPO_PERSONALE.includes(k)),
@@ -671,11 +680,19 @@ export const AndamentoPage = () => {
       )}
       <GraficoUtile mesi={ultimi} />
       <VociMese m={m} />
+      {data.modello && m.valori.movimenti && (
+        <CorreggiVoce movimenti={m.valori.movimenti} info={data.modello} />
+      )}
       <h2 className="text-base font-semibold -mb-2">Mese per mese</h2>
       <TabellaMesi mesi={ultimi} anno={anno.data?.a} />
+      {data.modello && <DaClassificare info={data.modello} />}
       {data.modello && <CosaManca voci={data.modello.cosa_manca} />}
       {data.modello && data.modello.spese_222.length > 0 && (
-        <Spese222 spese={data.modello.spese_222} />
+        <Spese222
+          spese={data.modello.spese_222}
+          voci={data.modello.voci_tendina ?? []}
+          applicate={data.modello.correzioni_applicate ?? []}
+        />
       )}
       {info && <Tasse info={info} />}
 
@@ -689,7 +706,7 @@ export const AndamentoPage = () => {
               <li key={t}>{t}</li>
             ))}
           </ul>
-          {info.da_classificare.length > 0 && (
+          {!data.modello && info.da_classificare.length > 0 && (
             <>
               <div className="mt-3 font-medium">
                 Uscite che l'agente non sa ancora dove mettere

@@ -1,7 +1,7 @@
 /**
- * Blocco "Da gennaio a oggi" della pagina Andamento: il contatore dell'anno chiesto da Fabio.
- * Legge andamento_blocchi tipo "anno" (una riga per anno), calcolata dall'agente agenti\cruscotto_agenzia (anno.py):
- * mesi da gennaio all'ultimo mese completo, mese in corso a parte, proiezione a dicembre senza le voci una tantum.
+ * "Since January" block of the Andamento page: the year-to-date counter.
+ * Reads andamento_blocchi type "anno" (one row per year), computed by the local agent (anno.py): months from
+ * January to the last complete month, current month shown apart, December projection without one-off items.
  */
 import { useQuery } from "@tanstack/react-query";
 
@@ -30,7 +30,7 @@ export type Anno = {
   dal: string | null;
   al: string | null;
   cassa_257: Totali;
-  /** dall'11/11/2026: provvigioni maturate e costi con i broker (null finche' l'agente non lo scrive) */
+  /** since 2026-11-11: accrued commissions and costs including brokers (null until the agent writes it) */
   modello?: Totali | null;
   voci: {
     entrate: Record<string, number>;
@@ -96,7 +96,7 @@ const crescita = (ora: number, prima: number) =>
     ? `${ora >= prima ? "+" : ""}${(((ora - prima) / prima) * 100).toLocaleString("it-IT", { maximumFractionDigits: 1 })}%`
     : "";
 
-/** Riga "anno" piu' recente (l'anno in corso). */
+/** Most recent "anno" row (the current year). */
 export const useBloccoAnno = () =>
   useQuery({
     queryKey: ["andamento", "anno"],

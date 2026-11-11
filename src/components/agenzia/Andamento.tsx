@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
+import { type Anno, DaGennaio, useBloccoAnno } from "./DaGennaio";
 import { MeseVirtuoso } from "./MeseVirtuoso";
 
 type Voci = Record<string, number>;
@@ -179,7 +180,18 @@ const GraficoUtile = ({ mesi }: { mesi: RigaMese[] }) => {
   );
 };
 
-const TabellaMesi = ({ mesi }: { mesi: RigaMese[] }) => {
+const TabellaMesi = ({
+  mesi,
+  anno,
+}: {
+  mesi: RigaMese[];
+  anno?: Anno | null;
+}) => {
+  const ga = anno?.voci;
+  const colGa = (v: number | undefined | null) =>
+    anno ? (
+      <td className="px-1 py-1 text-right font-semibold">{v ? num(v) : "0"}</td>
+    ) : null;
   const righe = (gruppo: "entrate" | "uscite" | "sotto") => {
     const tot: Record<string, number> = {};
     mesi.forEach((m) =>
@@ -192,7 +204,7 @@ const TabellaMesi = ({ mesi }: { mesi: RigaMese[] }) => {
     );
   };
   const cella = (v: number | undefined) => (
-    <td className={`px-2 py-1 text-right ${!v ? "text-muted-foreground" : ""}`}>
+    <td className={`px-1 py-1 text-right ${!v ? "text-muted-foreground" : ""}`}>
       {v ? num(v) : "0"}
     </td>
   );
@@ -202,27 +214,30 @@ const TabellaMesi = ({ mesi }: { mesi: RigaMese[] }) => {
     nome,
     f,
     forte,
+    daGennaio,
   }: {
     nome: string;
     f: (m: RigaMese) => number;
     forte?: string;
+    daGennaio?: number;
   }) => (
     <tr className={`border-t ${forte ?? ""}`}>
-      <th className="px-2 py-1 text-left font-normal sticky left-0 bg-card min-w-[150px] md:min-w-[230px]">
+      <th className="px-1 py-1 text-left font-normal sticky left-0 bg-card min-w-[150px] md:min-w-[160px]">
         {nome}
       </th>
       {mesi.map((m) => (
-        <td key={m.mese} className="px-2 py-1 text-right">
+        <td key={m.mese} className="px-1 py-1 text-right">
           {num(f(m))}
         </td>
       ))}
-      <td className="px-2 py-1 text-right font-semibold">{num(somma(f))}</td>
+      <td className="px-1 py-1 text-right font-semibold">{num(somma(f))}</td>
+      {colGa(daGennaio)}
     </tr>
   );
   const Sezione = ({ t }: { t: string }) => (
     <tr>
       <th
-        colSpan={mesi.length + 2}
+        colSpan={mesi.length + (anno ? 3 : 2)}
         className="px-2 pt-3 pb-1 text-left text-primary font-semibold sticky left-0 bg-card"
       >
         {t}
@@ -236,75 +251,93 @@ const TabellaMesi = ({ mesi }: { mesi: RigaMese[] }) => {
           <tr className="text-muted-foreground">
             <th className="sticky left-0 bg-card" />
             {mesi.map((m) => (
-              <th key={m.mese} className="px-2 py-2 text-right font-medium">
+              <th key={m.mese} className="px-1 py-2 text-right font-medium">
                 {breve(m.mese)}
               </th>
             ))}
-            <th className="px-2 py-2 text-right font-medium">Totale</th>
+            <th className="px-1 py-2 text-right font-medium">Ultimi 12 mesi</th>
+            {anno && (
+              <th className="px-1 py-2 text-right font-medium">
+                Da gennaio {anno.anno}
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
           <Sezione t="Entrate" />
           {righe("entrate").map((k) => (
             <tr key={k} className="border-t">
-              <th className="px-2 py-1 text-left font-normal sticky left-0 bg-card whitespace-normal min-w-[150px] md:min-w-[230px]">
+              <th className="px-1 py-1 text-left font-normal sticky left-0 bg-card whitespace-normal min-w-[150px] md:min-w-[160px]">
                 {k}
               </th>
               {mesi.map((m) => (
                 <Cella key={m.mese} v={m.valori.entrate[k]} cella={cella} />
               ))}
-              <td className="px-2 py-1 text-right font-semibold">
+              <td className="px-1 py-1 text-right font-semibold">
                 {num(somma((m) => m.valori.entrate[k] ?? 0))}
               </td>
+              {colGa(ga?.entrate[k])}
             </tr>
           ))}
           <Riga
             nome="Totale entrate"
             f={(m) => m.valori.tot_entrate}
             forte="font-semibold"
+            daGennaio={anno?.cassa_257.entrate}
           />
           <Sezione t="Uscite dell'agenzia" />
           {righe("uscite").map((k) => (
             <tr key={k} className="border-t">
-              <th className="px-2 py-1 text-left font-normal sticky left-0 bg-card whitespace-normal min-w-[150px] md:min-w-[230px]">
+              <th className="px-1 py-1 text-left font-normal sticky left-0 bg-card whitespace-normal min-w-[150px] md:min-w-[160px]">
                 {k}
               </th>
               {mesi.map((m) => (
                 <Cella key={m.mese} v={m.valori.uscite[k]} cella={cella} />
               ))}
-              <td className="px-2 py-1 text-right font-semibold">
+              <td className="px-1 py-1 text-right font-semibold">
                 {num(somma((m) => m.valori.uscite[k] ?? 0))}
               </td>
+              {colGa(ga?.uscite[k])}
             </tr>
           ))}
           <Riga
             nome="Totale uscite"
             f={(m) => m.valori.tot_uscite}
             forte="font-semibold"
+            daGennaio={anno ? -anno.cassa_257.uscite : undefined}
           />
           <Riga
             nome="Utile vero del mese"
             f={(m) => m.valori.utile}
             forte="font-semibold bg-muted"
+            daGennaio={anno?.cassa_257.utile}
           />
           <Sezione t="Sotto l'utile" />
           {righe("sotto").map((k) => (
             <tr key={k} className="border-t">
-              <th className="px-2 py-1 text-left font-normal sticky left-0 bg-card whitespace-normal min-w-[150px] md:min-w-[230px]">
+              <th className="px-1 py-1 text-left font-normal sticky left-0 bg-card whitespace-normal min-w-[150px] md:min-w-[160px]">
                 {k}
               </th>
               {mesi.map((m) => (
                 <Cella key={m.mese} v={m.valori.sotto[k]} cella={cella} />
               ))}
-              <td className="px-2 py-1 text-right font-semibold">
+              <td className="px-1 py-1 text-right font-semibold">
                 {num(somma((m) => m.valori.sotto[k] ?? 0))}
               </td>
+              {colGa(ga?.sotto[k])}
             </tr>
           ))}
           <Riga
             nome="Quanto resta sul conto"
             f={(m) => m.valori.resta}
             forte="font-semibold"
+            daGennaio={
+              ga
+                ? [ga.entrate, ga.uscite, ga.sotto]
+                    .flatMap((x) => Object.values(x))
+                    .reduce((s, x) => s + x, 0)
+                : undefined
+            }
           />
         </tbody>
       </table>
@@ -403,6 +436,7 @@ const Tasse = ({ info }: { info: Info }) => {
 
 export const AndamentoPage = () => {
   const accesso = useAccessoUtile();
+  const anno = useBloccoAnno();
   const { data, isPending, error } = useAndamento();
   const completi = (data?.mesi ?? []).filter((m) => !m.valori.parziale);
   const [scelto, setScelto] = useState<string | null>(null);
@@ -464,6 +498,7 @@ export const AndamentoPage = () => {
         </label>
       </div>
       <MeseVirtuoso mese={m.mese} />
+      <DaGennaio />
 
       <h2 className="text-lg font-semibold mt-4">
         Il conto gestionale 257 di Banca di Asti
@@ -508,7 +543,7 @@ export const AndamentoPage = () => {
       <GraficoUtile mesi={ultimi} />
       <VociMese m={m} />
       <h2 className="text-base font-semibold -mb-2">Mese per mese</h2>
-      <TabellaMesi mesi={ultimi} />
+      <TabellaMesi mesi={ultimi} anno={anno.data?.a} />
       {info && <Tasse info={info} />}
 
       {info && (

@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
+import { DecadeH } from "./DecadeH";
 
 type Meta = {
   titolo: string;
@@ -77,9 +78,10 @@ export const SEZIONI: Record<string, Meta> = {
   H: {
     titolo: "Controllo decade",
     breve: "Provvigioni della decade ricalcolate al centesimo",
-    descrizione: "Serve il dettaglio dei titoli della decade.",
-    frequenza: "tre volte al mese",
-    inArrivo: "In arrivo: serve il dettaglio della decade",
+    descrizione:
+      "File della decade scaricati da Newage, ricalcolati e confrontati col riepilogo, titolo per titolo con BO (NA013, NA016) e con l'aliquota attesa.",
+    frequenza: "a ogni decade nuova",
+    titoloRiga: "Contraente",
   },
 };
 
@@ -107,7 +109,7 @@ const numero = (v: any) =>
   typeof v === "number"
     ? v.toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 2, useGrouping: "always" } as unknown as Intl.NumberFormatOptions)
     : String(v ?? "");
-const CAMPI_SOLDI = /premio|recuperare|recuperato|aumento|rca/i;
+const CAMPI_SOLDI = /premio|recuperare|recuperato|aumento|rca|provvigione|scarto/i;
 const valore = (k: string, v: any) =>
   typeof v === "number" && CAMPI_SOLDI.test(k) ? `${numero(v)} €` : numero(v);
 
@@ -366,7 +368,7 @@ export const SezionePage = () => {
 
       {s !== "F" && !meta.inArrivo && (
         <>
-          <Riepilogo s={s} r={riepilogo} />
+          {s === "H" ? <DecadeH r={riepilogo} /> : <Riepilogo s={s} r={riepilogo} />}
           <div className="flex flex-wrap items-center gap-2">
             {(
               [

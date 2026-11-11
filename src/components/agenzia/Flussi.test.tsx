@@ -6,7 +6,7 @@ import {
   type Riepilogo,
   RiepilogoBlocco,
 } from "./Commercialista";
-import { FlussiBlocco } from "./Flussi";
+import { FlussiBlocco, perSankey, SankeyFlussi } from "./Flussi";
 import { Telefono } from "./Telefono";
 
 // Invented data: real agency figures never go into the repository.
@@ -75,6 +75,65 @@ describe("FlussiBlocco", () => {
     await expect
       .element(screen.getByText("va a Provvigioni ai broker"))
       .toBeVisible();
+  });
+});
+
+describe("perSankey", () => {
+  // Invented month where giro transfers exceed commissions: the difference comes from the premium account balance.
+  const flussi = [
+    { da: "Provvigioni maturate", a: "Conto gestionale 257", importo: 1200 },
+    { da: "Provvigioni maturate", a: "Conto premi", importo: -200 },
+    { da: "Conto premi", a: "Resta sul conto premi", importo: -200 },
+    { da: "Conto gestionale 257", a: "Altre spese", importo: 1300 },
+    { da: "Conto gestionale 257", a: "Resta sul 257", importo: -100 },
+  ];
+
+  it("turns negative flows into flows taken from the account balance", () => {
+    const d = perSankey(flussi);
+    expect(d.links.every((l) => l.value > 0)).toBe(true);
+    expect(d.links).toContainEqual({
+      source: "Preso dal saldo del conto premi",
+      target: "Conto premi",
+      value: 200,
+    });
+    expect(d.links).toContainEqual({
+      source: "Conto premi",
+      target: "Provvigioni maturate",
+      value: 200,
+    });
+    expect(d.links).toContainEqual({
+      source: "Preso dal saldo del 257",
+      target: "Conto gestionale 257",
+      value: 100,
+    });
+  });
+
+  it("keeps every middle node balanced and the commissions at their own amount", () => {
+    const d = perSankey(flussi);
+    const somma = (id: string, lato: "source" | "target") =>
+      d.links.filter((l) => l[lato] === id).reduce((t, l) => t + l.value, 0);
+    for (const id of ["Conto premi", "Conto gestionale 257"]) {
+      expect(somma(id, "target")).toBe(somma(id, "source"));
+    }
+    const p = d.nodes.find((n) => n.id === "Provvigioni maturate");
+    expect(p?.netto).toBe(1000);
+    expect(p?.tipo).toBe("entrata");
+  });
+
+  it("draws the chart without errors", async () => {
+    const screen = await render(
+      <div style={{ width: 1000 }}>
+        <SankeyFlussi
+          b={{
+            flussi,
+            controllo: { sinistra: 1000, resta: -300, chiude: true },
+          }}
+        />
+      </div>,
+    );
+    await expect
+      .element(screen.getByText(/Preso dal saldo del 257/))
+      .toBeInTheDocument();
   });
 });
 

@@ -1,9 +1,10 @@
 /**
  * "Where the money goes" part of the Andamento page: money flows of the selected month and from January, grouped by
- * the node they leave (commissions, non-insurance items, other income, each bank account). Shown as horizontal bars,
- * readable on a phone too. Data: andamento_blocchi type "flussi" (agent, flussi.py), where every node is checked to
- * balance to the cent.
+ * the node they leave (commissions, non-insurance items, other income, each bank account). From 700 px a Sankey chart,
+ * below 700 px horizontal bars with the same numbers. Data: andamento_blocchi type "flussi" (agent, flussi.py), where
+ * every node is checked to balance to the cent.
  */
+import { ResponsiveSankey } from "@nivo/sankey";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -45,6 +46,118 @@ const ORIGINI = [
   "Banco Desio",
   "Conto premi",
 ];
+
+export type NodoSankey = { id: string; netto: number; tipo: string };
+export type DatiSankey = {
+  nodes: NodoSankey[];
+  links: { source: string; target: string; value: number }[];
+};
+
+const presoDal = (resta: string) =>
+  resta
+    .replace(/^Resta sul /, "Preso dal saldo del ")
+    .replace(/^Resta su /, "Preso dal saldo di ");
+
+/**
+ * A Sankey cannot draw negative flows. A negative flow means an account paid out more than it received in the period,
+ * so the difference came from its balance: the flow is reversed and the "what is left" leaf becomes a "taken from the
+ * balance" source. Every node still balances, the amounts do not change. Node "netto" = what the node brings in
+ * (sources) or receives (the others), shown as its label instead of the chart's own max(in, out).
+ */
+export const perSankey = (flussi: Flusso[]): DatiSankey => {
+  const links = flussi
+    .filter((f) => Math.abs(f.importo) > 0.004)
+    .map((f) =>
+      f.importo >= 0
+        ? { source: f.da, target: f.a, value: f.importo }
+        : {
+            source: f.a.startsWith("Resta") ? presoDal(f.a) : f.a,
+            target: f.da,
+            value: -f.importo,
+          },
+    );
+  const ids = Array.from(new Set(links.flatMap((l) => [l.source, l.target])));
+  const nodes = ids.map((id) => {
+    const entra = links
+      .filter((l) => l.target === id)
+      .reduce((t, l) => t + l.value, 0);
+    const esce = links
+      .filter((l) => l.source === id)
+      .reduce((t, l) => t + l.value, 0);
+    const tipo = id.startsWith("Resta")
+      ? "resta"
+      : id.startsWith("Preso dal saldo")
+        ? "saldo"
+        : ORIGINI.slice(0, 3).includes(id)
+          ? "entrata"
+          : ORIGINI.includes(id)
+            ? "conto"
+            : "spesa";
+    return {
+      id,
+      tipo,
+      netto: tipo === "entrata" ? esce - entra : entra > 0 ? entra : esce,
+    };
+  });
+  return { nodes, links };
+};
+
+const COLORE: Record<string, string> = {
+  entrata: "#3b6ea8",
+  conto: "#6b7a8f",
+  spesa: "#b5793a",
+  resta: "#2e7d4f",
+  saldo: "#b23b3b",
+};
+
+export const SankeyFlussi = ({ b }: { b: BloccoFlussi }) => {
+  const dati = perSankey(b.flussi);
+  const netto = Object.fromEntries(dati.nodes.map((n) => [n.id, n.netto]));
+  // nivo animates label colours, so a CSS variable cannot be used here: plain colours for light and dark theme
+  const testo = document.documentElement.classList.contains("dark")
+    ? "#e6e8eb"
+    : "#1f2328";
+  return (
+    <div style={{ height: 460 }} data-testid="sankey-flussi">
+      <ResponsiveSankey
+        data={dati}
+        margin={{ top: 8, right: 230, bottom: 8, left: 240 }}
+        align="justify"
+        sort="input"
+        colors={(n) => COLORE[(n as unknown as NodoSankey).tipo] ?? "#6b7a8f"}
+        nodeOpacity={1}
+        nodeThickness={14}
+        nodeSpacing={14}
+        nodeBorderWidth={0}
+        linkOpacity={0.35}
+        linkHoverOpacity={0.6}
+        linkContract={1}
+        enableLinkGradient={false}
+        labelPosition="outside"
+        labelPadding={8}
+        label={(n) => `${n.id} ${euro(netto[n.id] ?? n.value)}`}
+        animate={false}
+        labelTextColor={testo}
+        theme={{
+          text: { fill: testo, fontSize: 11 },
+        }}
+        nodeTooltip={({ node }) => (
+          <div className="rounded border bg-popover px-2 py-1 text-sm text-popover-foreground shadow">
+            {node.id}: <strong>{euro(netto[node.id] ?? node.value)}</strong>
+          </div>
+        )}
+        linkTooltip={({ link }) => (
+          <div className="rounded border bg-popover px-2 py-1 text-sm text-popover-foreground shadow">
+            {link.source.id} verso {link.target.id}:{" "}
+            <strong>{euro(link.value)}</strong>
+          </div>
+        )}
+        role="img"
+        ariaLabel="Dove vanno i soldi, grafico dei flussi"
+      />
+    </div>
+  );
+};
 
 export const useBlocchiFlussi = () =>
   useQuery({
@@ -144,14 +257,27 @@ export const Flussi = ({ mese }: { mese: string }) => {
         </div>
       </div>
       {b ? (
-        <FlussiBlocco
-          b={b}
-          titolo={
-            vista === "mese"
-              ? `A ${MESI[parseInt(mese.slice(5, 7), 10) - 1]}`
-              : `Da gennaio ${anno}`
-          }
-        />
+        <>
+          <div className="hidden min-[700px]:block">
+            <p className="text-sm text-muted-foreground mb-2">
+              Da sinistra a destra: da dove arrivano i soldi, su quale conto
+              passano, dove finiscono. In verde quello che resta, in rosso
+              quello che un conto ha preso dal suo saldo perché ha pagato più di
+              quanto gli è entrato.
+            </p>
+            <SankeyFlussi b={b} />
+          </div>
+          <div className="min-[700px]:hidden">
+            <FlussiBlocco
+              b={b}
+              titolo={
+                vista === "mese"
+                  ? `A ${MESI[parseInt(mese.slice(5, 7), 10) - 1]}`
+                  : `Da gennaio ${anno}`
+              }
+            />
+          </div>
+        </>
       ) : (
         <p className="text-sm text-muted-foreground">
           Nessun dato per questo periodo.

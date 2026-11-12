@@ -66,6 +66,9 @@ describe("FiscaleBlocco", () => {
     await expect
       .element(screen.getByText(/la dà Mauro con la dichiarazione/))
       .toBeVisible();
+    await expect
+      .element(screen.getByText("Simula le tasse con il tuo utile"))
+      .toBeVisible();
   });
 
   it("warns only when the projected taxable profit is above the threshold", async () => {

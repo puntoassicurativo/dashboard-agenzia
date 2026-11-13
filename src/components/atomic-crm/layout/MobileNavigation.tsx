@@ -23,10 +23,16 @@ export const MobileNavigation = () => {
   let currentPath: string | boolean = "/";
   if (matchPath("/", location.pathname)) {
     currentPath = "/";
-  } else if (matchPath("/sezioni/*", location.pathname)) {
-    currentPath = "/sezioni";
-  } else if (matchPath("/andamento", location.pathname)) {
-    currentPath = "/andamento";
+  } else if (
+    matchPath("/sezioni/*", location.pathname) ||
+    matchPath("/amministrazione/*", location.pathname)
+  ) {
+    currentPath = "/amministrazione";
+  } else if (
+    matchPath("/andamento", location.pathname) ||
+    matchPath("/contabilita/*", location.pathname)
+  ) {
+    currentPath = "/contabilita";
   } else if (matchPath("/contacts/*", location.pathname)) {
     currentPath = "/contacts";
   } else if (matchPath("/companies/*", location.pathname)) {
@@ -60,27 +66,27 @@ export const MobileNavigation = () => {
     >
       <div className="flex justify-center">
         <>
-          {/* Dashboard di agenzia: Cruscotto, Sezioni, Impostazioni */}
+          {/* Agency dashboard: Cruscotto, Contabilita' (partners), Amministrazione, Impostazioni */}
           <NavigationButton
             href="/"
             Icon={Home}
             label="Cruscotto"
             isActive={currentPath === "/"}
           />
-          <NavigationButton
-            href="/sezioni"
-            Icon={LayoutList}
-            label="Sezioni"
-            isActive={currentPath === "/sezioni"}
-          />
           {vedeUtile && (
             <NavigationButton
-              href="/andamento"
+              href="/contabilita"
               Icon={TrendingUp}
-              label="Andamento"
-              isActive={currentPath === "/andamento"}
+              label="Contabilità"
+              isActive={currentPath === "/contabilita"}
             />
           )}
+          <NavigationButton
+            href="/amministrazione"
+            Icon={LayoutList}
+            label="Amministraz."
+            isActive={currentPath === "/amministrazione"}
+          />
           <SettingsButton />
         </>
       </div>

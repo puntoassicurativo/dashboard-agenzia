@@ -19,10 +19,16 @@ const Header = () => {
   let currentPath: string | boolean = "/";
   if (matchPath("/", location.pathname)) {
     currentPath = "/";
-  } else if (matchPath("/sezioni/*", location.pathname)) {
-    currentPath = "/sezioni";
-  } else if (matchPath("/andamento", location.pathname)) {
-    currentPath = "/andamento";
+  } else if (
+    matchPath("/sezioni/*", location.pathname) ||
+    matchPath("/amministrazione/*", location.pathname)
+  ) {
+    currentPath = "/amministrazione";
+  } else if (
+    matchPath("/andamento", location.pathname) ||
+    matchPath("/contabilita/*", location.pathname)
+  ) {
+    currentPath = "/contabilita";
   } else {
     currentPath = false;
   }
@@ -57,18 +63,18 @@ const Header = () => {
                     to="/"
                     isActive={currentPath === "/"}
                   />
-                  <NavigationTab
-                    label="Sezioni"
-                    to="/sezioni"
-                    isActive={currentPath === "/sezioni"}
-                  />
                   {vedeUtile && (
                     <NavigationTab
-                      label="Andamento mese"
-                      to="/andamento"
-                      isActive={currentPath === "/andamento"}
+                      label="Contabilità"
+                      to="/contabilita"
+                      isActive={currentPath === "/contabilita"}
                     />
                   )}
+                  <NavigationTab
+                    label="Amministrazione"
+                    to="/amministrazione"
+                    isActive={currentPath === "/amministrazione"}
+                  />
                 </nav>
               </div>
               <div className="flex items-center">

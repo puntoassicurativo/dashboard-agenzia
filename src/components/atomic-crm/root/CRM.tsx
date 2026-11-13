@@ -28,6 +28,7 @@ import { ImportPage } from "../misc/ImportPage";
 import { ChangelogPage } from "../misc/ChangelogPage";
 import { SezioniPage, SezionePage } from "../../agenzia/Sezioni";
 import { AndamentoPage } from "../../agenzia/Andamento";
+import { AmministrazionePage, ContabilitaPage } from "../../agenzia/Lati";
 import {
   getAuthProvider as defaultAuthProviderBuilder,
   getDataProvider as defaultDataProviderBuilder,
@@ -263,6 +264,13 @@ const DesktopAdmin = (
         <Route path="/sezioni" element={<SezioniPage />} />
         <Route path="/sezioni/:lettera" element={<SezionePage />} />
         <Route path="/andamento" element={<AndamentoPage />} />
+        <Route path="/contabilita" element={<ContabilitaPage />} />
+        <Route path="/contabilita/:voce" element={<ContabilitaPage />} />
+        <Route path="/amministrazione" element={<AmministrazionePage />} />
+        <Route
+          path="/amministrazione/:voce"
+          element={<AmministrazionePage />}
+        />
         <Route path={SettingsPage.path} element={<SettingsPage />} />
         <Route path={ImportPage.path} element={<ImportPage />} />
         <Route path={ChangelogPage.path} element={<ChangelogPage />} />
@@ -332,6 +340,13 @@ const MobileAdmin = (
           <Route path="/sezioni" element={<SezioniPage />} />
           <Route path="/sezioni/:lettera" element={<SezionePage />} />
           <Route path="/andamento" element={<AndamentoPage />} />
+          <Route path="/contabilita" element={<ContabilitaPage />} />
+          <Route path="/contabilita/:voce" element={<ContabilitaPage />} />
+          <Route path="/amministrazione" element={<AmministrazionePage />} />
+          <Route
+            path="/amministrazione/:voce"
+            element={<AmministrazionePage />}
+          />
           <Route path={ChangelogPage.path} element={<ChangelogPage />} />
         </CustomRoutes>
         <Resource

@@ -16,7 +16,7 @@ const base: SaldiMese = {
   una_tantum: 0,
   altre_uscite: 0,
   tot_uscite: 900,
-  avanzo: 100,
+  avanzo: 160,
   avanzo_da_gennaio: -50,
   saldo_conto_premi: 1234.56,
   altre_entrate: [
@@ -41,7 +41,28 @@ const base: SaldiMese = {
       tipo: "refuso_c",
     },
   ],
-  avanzo_corretto_bo: 90,
+  avanzo_solo_saldi: 100,
+  avanzo_provvisorio: false,
+  mv_provv: { valore: 990, fonte: "bo", saldi: 1000, diff: 10 },
+  mv_girato: {
+    valore: 780,
+    fonte: "banca",
+    saldi: 800,
+    saldi_asti: 600,
+    saldi_desio: 200,
+    asti: 580,
+    asti_lordo: 600,
+    ritorni: 20,
+    desio: 200,
+    diff: 20,
+  },
+  mv_pna: {
+    valore: 50,
+    rimesse: [{ data: "2030-03-08", importo: 50 }],
+    riferita_a: "2030-02",
+    decade: 50,
+    diff_decade: 0,
+  },
   banca: {
     saldi_asti: 600,
     banca_222_257: 600,
@@ -69,14 +90,35 @@ const negativo: SaldiMese = {
       sottotipo: "una_tantum",
     },
   ],
-  avanzo_corretto_bo: null,
+  avanzo_solo_saldi: undefined,
+  avanzo_provvisorio: undefined,
+  mv_provv: undefined,
+  mv_girato: undefined,
+  mv_pna: undefined,
   controlli_bo: [],
   altre_entrate: [],
+};
+const provvisorio: SaldiMese = {
+  ...base,
+  avanzo: 110,
+  avanzo_provvisorio: true,
+  mv_pna: {
+    valore: null,
+    rimesse: [],
+    riferita_a: "2030-03",
+    motivo:
+      "rimessa non ancora arrivata, estratto Banco Desio fino al 2030-04-05",
+  },
 };
 
 const righe = [
   { mese: "2030-02", valori: negativo, aggiornato_il: "2030-04-02T06:30:00Z" },
   { mese: "2030-03", valori: base, aggiornato_il: "2030-04-02T06:30:00Z" },
+  {
+    mese: "2030-04",
+    valori: provvisorio,
+    aggiornato_il: "2030-04-02T06:30:00Z",
+  },
   {
     mese: "info",
     valori: { ultimo_giorno: "2030-04-01", bo_aggiornato: "2030-04-02" },
@@ -114,22 +156,66 @@ describe("MeseVirtuoso", () => {
     await expect.element(screen.getByText("Sì", { exact: true })).toBeVisible();
     await expect
       .element(
-        screen.getByText(/A marzo le provvigioni sono state 1\.000 euro/),
+        screen.getByText(
+          /A marzo le provvigioni sono state 990 euro e le partite non assicurative 50/,
+        ),
       )
       .toBeVisible();
-    await expect
-      .element(screen.getByText("Asti 600,00 €, Desio 200,00 €"))
-      .toBeVisible();
     await expect.element(screen.getByText(/AB broker 70,00\s€/)).toBeVisible();
-    await expect
-      .element(screen.getByText("Corretto con BO: 90,00 €"))
-      .toBeVisible();
     await expect
       .element(
         screen.getByText("Saldo del conto premi a fine mese (foglio Saldi)"),
       )
       .toBeVisible();
     await expect.element(screen.getByText(/non sono un ricavo/)).toBeVisible();
+  });
+
+  it("uses BO for commissions and shows the gap with the Saldi sheet", async () => {
+    const screen = await mostra("2030-03");
+    await expect
+      .element(
+        screen.getByText(/Foglio Saldi: 1\.000,00\s€, differenza 10,00\s€/),
+      )
+      .toBeVisible();
+  });
+
+  it("uses the bank for transfers, net of the returns to the premium account", async () => {
+    const screen = await mostra("2030-03");
+    await expect
+      .element(
+        screen.getByText(
+          /Asti 580,00\s€, Desio 200,00\s€ \(Asti 600,00\s€ meno 20,00\s€ tornati al conto premi\)\. Foglio Saldi: 800,00\s€, differenza 20,00\s€/,
+        ),
+      )
+      .toBeVisible();
+  });
+
+  it("shows the non-insurance remittance and the surplus that includes it", async () => {
+    const screen = await mostra("2030-03");
+    await expect
+      .element(
+        screen.getByText(
+          /rimessa del 08\/03\/2030, riferita a febbraio\. Uguale al saldo della decade/,
+        ),
+      )
+      .toBeVisible();
+    await expect
+      .element(screen.getByText(/Col solo foglio Saldi: 100,00\s€/))
+      .toBeVisible();
+  });
+
+  it("marks the surplus as provisional when the remittance is not in yet", async () => {
+    const screen = await mostra("2030-04");
+    await expect
+      .element(
+        screen.getByText(/Provvisorio: mancano le partite non assicurative/),
+      )
+      .toBeVisible();
+    await expect
+      .element(
+        screen.getByText(/non ancora disponibile: rimessa non ancora arrivata/),
+      )
+      .toBeVisible();
   });
 
   it("shows a negative month in red, with the one-off outflow without details", async () => {
@@ -139,10 +225,26 @@ describe("MeseVirtuoso", () => {
       .element(screen.getByText(/di cui 300 di uscita una tantum/))
       .toBeVisible();
     await expect.element(screen.getByText(/uscita una tantum$/)).toBeVisible();
-    expect(screen.container.textContent).not.toMatch(/Corretto con BO/);
     expect(screen.container.textContent?.toLowerCase()).not.toMatch(
       /gruzzolet/,
     );
+  });
+
+  it("falls back to the Saldi sheet and says so when the sources are missing", async () => {
+    const screen = await mostra("2030-02");
+    await expect
+      .element(screen.getByText("dal foglio Saldi, BO non ancora disponibile"))
+      .toBeVisible();
+    await expect
+      .element(
+        screen.getByText(
+          /Dal foglio Saldi: estratto conto non ancora caricato/,
+        ),
+      )
+      .toBeVisible();
+    await expect
+      .element(screen.getByText("estratto Banco Desio non letto"))
+      .toBeVisible();
   });
 
   it("opens the checks and explains the typo", async () => {

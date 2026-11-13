@@ -45,6 +45,35 @@ type BancaMese = {
   }[];
   dal_222_ai_soci: Bonifico[];
 };
+// The three "official source wins" boxes (addendum of 13/11/2026): commissions from BO, transfers from the bank
+// statements, non-insurance items from the Vittoria remittance on the Banco Desio 211900 account.
+type MvProvvigioni = {
+  valore: number;
+  fonte: "bo" | "saldi";
+  saldi: number;
+  diff: number | null;
+};
+type MvGirato = {
+  valore: number;
+  fonte: "banca" | "saldi";
+  saldi: number;
+  saldi_asti: number;
+  saldi_desio: number;
+  asti: number;
+  asti_lordo?: number;
+  ritorni?: number;
+  desio: number;
+  diff: number | null;
+  motivo?: string;
+};
+type MvPna = {
+  valore: number | null;
+  rimesse: { data: string; importo: number }[];
+  riferita_a: string;
+  decade?: number;
+  diff_decade?: number;
+  motivo?: string;
+};
 export type SaldiMese = {
   provvigioni: number;
   bo_provvigioni: number | null;
@@ -64,15 +93,44 @@ export type SaldiMese = {
   parziale: boolean;
   al: string | null;
   controlli_bo: ControlloBo[];
-  avanzo_corretto_bo: number | null;
+  avanzo_solo_saldi?: number;
+  avanzo_provvisorio?: boolean;
+  mv_provv?: MvProvvigioni;
+  mv_girato?: MvGirato;
+  mv_pna?: MvPna;
   banca?: BancaMese;
 };
+
+const SOGLIA_DIFF = 0.05;
+const haDifferenza = (d: number | null | undefined) =>
+  d != null && Math.abs(d) >= SOGLIA_DIFF;
+
+/** Fallback for rows written before the addendum: Saldi values only. */
+const provvigioniDi = (v: SaldiMese): MvProvvigioni =>
+  v.mv_provv ?? {
+    valore: v.provvigioni,
+    fonte: "saldi",
+    saldi: v.provvigioni,
+    diff: null,
+  };
+const giratoDi = (v: SaldiMese): MvGirato =>
+  v.mv_girato ?? {
+    valore: v.girato_asti + v.girato_desio,
+    fonte: "saldi",
+    saldi: v.girato_asti + v.girato_desio,
+    saldi_asti: v.girato_asti,
+    saldi_desio: v.girato_desio,
+    asti: v.girato_asti,
+    desio: v.girato_desio,
+    diff: null,
+  };
 type InfoSaldi = {
   ultimo_giorno: string;
   bo_aggiornato: string | null;
   banca_dal: string | null;
   banca_al: string | null;
   desio_letto: boolean;
+  desio_al?: string | null;
 };
 
 const MESI = [
@@ -204,9 +262,7 @@ const GraficoAvanzo = ({
   }));
   return (
     <div className="rounded-lg border bg-card p-4">
-      <h3 className="text-base font-semibold mb-2">
-        Avanzo del Saldi per mese
-      </h3>
+      <h3 className="text-base font-semibold mb-2">Avanzo per mese</h3>
       <div className="h-[180px]">
         <ResponsiveBar
           data={dati}
@@ -238,7 +294,7 @@ const GraficoAvanzo = ({
             </div>
           )}
           role="img"
-          ariaLabel="Avanzo del foglio Saldi per mese"
+          ariaLabel="Avanzo per mese"
         />
       </div>
     </div>
@@ -390,18 +446,62 @@ export const MeseVirtuoso = ({ mese }: { mese: string }) => {
   const v = riga.v;
   const info = data.info;
   const agg = `Aggiornato il ${dataIt(data.aggiornato)}, foglio Saldi letto fino al ${dataIt(info?.ultimo_giorno)}`;
-  const girato = v.girato_asti + v.girato_desio;
+  const provv = provvigioniDi(v);
+  const girato = giratoDi(v);
+  const pna = v.mv_pna;
+  const pnaValore = pna?.valore ?? 0;
+  const usciti = girato.valore + v.broker + v.una_tantum + v.altre_uscite;
   const virtuoso = v.avanzo > 0;
   const nm = nomeMese(mese);
   const altreUscite = v.uscite_altro;
   const frase =
-    `A ${nm} le provvigioni sono state ${intero(v.provvigioni)} euro e dal conto premi ne sono usciti ${intero(v.tot_uscite)}` +
+    `A ${nm} le provvigioni sono state ${intero(provv.valore)} euro` +
+    (pna?.valore != null
+      ? ` e le partite non assicurative ${pnaValore < 0 ? "meno " : ""}${intero(pnaValore)}`
+      : "") +
+    `; dal conto premi ne sono usciti ${intero(usciti)}` +
     (v.una_tantum > 0
       ? `, di cui ${intero(v.una_tantum)} di uscita una tantum. `
       : ". ") +
     (v.avanzo >= 0
       ? `Il mese chiude con ${intero(v.avanzo)} euro di avanzo.`
-      : `Il mese chiude con ${intero(v.avanzo)} euro in meno: è uscito più di quanto è maturato.`);
+      : `Il mese chiude con ${intero(v.avanzo)} euro in meno: è uscito più di quanto è entrato.`) +
+    (v.avanzo_provvisorio
+      ? " Provvisorio: mancano le partite non assicurative."
+      : "");
+  const notaProvv =
+    provv.fonte === "saldi"
+      ? "dal foglio Saldi, BO non ancora disponibile"
+      : haDifferenza(provv.diff)
+        ? `Foglio Saldi: ${euro(provv.saldi, 2)}, differenza ${euro(provv.diff, 2)}`
+        : "uguale al foglio Saldi";
+  const notaGirato =
+    girato.fonte === "saldi"
+      ? `Asti ${euro(girato.asti, 2)}, Desio ${euro(girato.desio, 2)}. Dal foglio Saldi: ${girato.motivo ?? "estratto conto non ancora caricato"}`
+      : `Asti ${euro(girato.asti, 2)}, Desio ${euro(girato.desio, 2)}` +
+        ((girato.ritorni ?? 0) > 0
+          ? ` (Asti ${euro(girato.asti_lordo, 2)} meno ${euro(girato.ritorni, 2)} tornati al conto premi)`
+          : "") +
+        (haDifferenza(girato.diff)
+          ? `. Foglio Saldi: ${euro(girato.saldi, 2)}, differenza ${euro(girato.diff, 2)}`
+          : ". Uguale al foglio Saldi") +
+        (haDifferenza(girato.saldi_asti - (girato.asti_lordo ?? 0)) &&
+        !haDifferenza(girato.diff)
+          ? ` nel totale, ma divisa diversamente fra Asti e Desio (foglio: Asti ${euro(girato.saldi_asti, 2)}, Desio ${euro(girato.saldi_desio, 2)})`
+          : "");
+  const notaPna = !pna
+    ? "estratto Banco Desio non letto"
+    : pna.valore == null
+      ? `non ancora disponibile: ${pna.motivo ?? "manca l'estratto Banco Desio"}`
+      : (pna.rimesse.length > 0
+          ? pna.rimesse.map((r) => `rimessa del ${dataIt(r.data)}`).join(", ") +
+            `, riferita a ${nomeMese(pna.riferita_a)}`
+          : "nessuna rimessa questo mese") +
+        (pna.decade != null
+          ? haDifferenza(pna.diff_decade)
+            ? `. Decade: ${euro(pna.decade, 2)}, differenza ${euro(pna.diff_decade, 2)}`
+            : ". Uguale al saldo della decade"
+          : "");
   const anno = mese.slice(0, 4);
   const ultimi = data.mesi
     .filter((m) => !m.v.parziale && m.mese <= mese)
@@ -427,22 +527,24 @@ export const MeseVirtuoso = ({ mese }: { mese: string }) => {
           Mese in corso: foglio letto fino al {dataIt(v.al)}.
         </p>
       )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <Riquadro
           titolo="Provvigioni del mese"
-          valore={euro(v.provvigioni, 2)}
-          nota={
-            v.bo_provvigioni != null
-              ? `BO: ${euro(v.bo_provvigioni, 2)}, differenza ${euro(v.diff_bo, 2)}`
-              : undefined
-          }
-          come={`Foglio Saldi, colonna C delle righe di provvigioni (quelle con il dettaglio dirette e intermediate). BO: provvigioni di acquisto e incasso danni e vita per giorno di giornale. ${agg}, BO del ${dataIt(info?.bo_aggiornato)}.`}
+          valore={euro(provv.valore, 2)}
+          nota={notaProvv}
+          come={`Provvigioni di acquisto e incasso, danni e vita, prese da BO per giorno di giornale: sono il dato ufficiale. Se il foglio Saldi (colonna C) dà un'altra cifra, la differenza si vede qui e i giorni che non tornano sono nei controlli in fondo. Quando BO non ha ancora il mese, vale il foglio Saldi. ${agg}, BO del ${dataIt(info?.bo_aggiornato)}.`}
+        />
+        <Riquadro
+          titolo="Partite non assicurative"
+          valore={pna?.valore != null ? euro(pna.valore, 2) : "n.d."}
+          nota={notaPna}
+          come={`Bonifico della Direzione sul conto gestionale Banco Desio 211900 (la rimessa della terza decade), di solito fra il 7 e il 12 del mese. Si conta nel mese in cui arriva e si riferisce alle partite non assicurative del mese prima. Se il file della decade c'è, la rimessa si confronta col suo saldo. Estratto Banco Desio fino al ${dataIt(info?.desio_al)}.`}
         />
         <Riquadro
           titolo="Girato ai conti dell'agenzia"
-          valore={euro(girato, 2)}
-          nota={`Asti ${euro(v.girato_asti, 2)}, Desio ${euro(v.girato_desio, 2)}`}
-          come={`Foglio Saldi, colonna E: righe "giroconto asti" (verso il conto gestionale 257) e righe con "desio" (verso il conto gestionale Desio). ${agg}.`}
+          valore={euro(girato.valore, 2)}
+          nota={notaGirato}
+          come={`Quello che è davvero arrivato sui conti dell'agenzia secondo gli estratti conto: Asti 257 dal conto premi 222, meno quello che il 257 ha rimandato al 222, più Banco Desio 211900 dal 222 e dal dedicato 212000. Se il foglio Saldi (colonna E) dà un'altra cifra, la differenza si vede qui. Quando l'estratto non copre il mese, vale il foglio Saldi. ${agg}.`}
         />
         <Riquadro
           titolo="Provvigioni ai broker"
@@ -462,11 +564,15 @@ export const MeseVirtuoso = ({ mese }: { mese: string }) => {
           valore={euro(v.avanzo, 2)}
           colore={v.avanzo >= 0 ? "verde" : "rosso"}
           nota={
-            v.avanzo_corretto_bo != null
-              ? `Corretto con BO: ${euro(v.avanzo_corretto_bo, 2)}`
-              : undefined
+            (v.avanzo_provvisorio
+              ? "provvisorio, mancano le partite non assicurative. "
+              : "") +
+            (v.avanzo_solo_saldi != null &&
+            haDifferenza(v.avanzo - v.avanzo_solo_saldi)
+              ? `Col solo foglio Saldi: ${euro(v.avanzo_solo_saldi, 2)}`
+              : "")
           }
-          come={`Provvigioni del mese meno tutto quello che è uscito dal conto premi nel foglio Saldi (giroconti, broker e altre uscite). Le altre entrate del foglio non contano. ${agg}.`}
+          come={`Provvigioni del mese (da BO) più partite non assicurative (rimessa sul Banco Desio), meno il girato ai conti dell'agenzia (dagli estratti conto), le provvigioni ai broker e le altre uscite del foglio Saldi. Le altre entrate del foglio non contano. ${agg}.`}
         />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -495,7 +601,7 @@ export const MeseVirtuoso = ({ mese }: { mese: string }) => {
             {euro(v.avanzo_da_gennaio, 2)}
           </div>
           <ComeCalcolato
-            testo={`Somma degli avanzi dei mesi da gennaio a ${nm} ${anno}, uscite una tantum comprese. ${agg}.`}
+            testo={`Somma degli avanzi dei mesi da gennaio a ${nm} ${anno}, calcolati come il riquadro dell'avanzo, uscite una tantum comprese. ${agg}.`}
           />
         </div>
       </div>

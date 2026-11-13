@@ -32,6 +32,10 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MiB
+        // Take a new version at once and drop old caches: a phone kept an old build and showed a loading error
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
       },
       manifest: false, // Use existing manifest.json from public/
     }),

@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
+import { ErroreCaricamento } from "./ErroreCaricamento";
 
 type Delta = {
   np: number;
@@ -233,7 +234,7 @@ const GraficoMesi = ({ mesi }: { mesi: Mese[] }) => {
 export const Cruscotto = () => {
   const { data, isPending, error } = useCruscotto();
   if (isPending) return <div className="p-4 text-muted-foreground">Carico i dati...</div>;
-  if (error) return <div className="p-4 text-red-700">Errore nel caricare i dati: {String(error.message ?? error)}</div>;
+  if (error) return <ErroreCaricamento errore={error} />;
   if (!data) return <div className="p-4 text-muted-foreground">Nessun dato ancora: l'agente non ha ancora girato.</div>;
 
   const v = data.valori;

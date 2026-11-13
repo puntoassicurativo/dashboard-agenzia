@@ -9,6 +9,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Fragment, useState } from "react";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
+import { ChiusoSuTelefono } from "./ChiusoSuTelefono";
+import { ErroreCaricamento } from "./ErroreCaricamento";
 import {
   CorreggiVoce,
   CosaManca,
@@ -581,12 +583,7 @@ export const AndamentoPage = () => {
     );
   if (isPending || accesso.isPending)
     return <div className="p-4 text-muted-foreground">Carico i dati...</div>;
-  if (error)
-    return (
-      <div className="p-4 text-red-700">
-        Errore nel caricare i dati: {String(error.message ?? error)}
-      </div>
-    );
+  if (error) return <ErroreCaricamento errore={error} />;
   if (!data || completi.length === 0)
     return (
       <div className="p-4 text-muted-foreground">
@@ -631,28 +628,33 @@ export const AndamentoPage = () => {
       </div>
       {fiscale.data && <AvvisoUtile f={fiscale.data} />}
       <MeseVirtuoso mese={m.mese} />
-      <DaGennaio />
+      <ChiusoSuTelefono titolo="Da gennaio">
+        <DaGennaio />
+      </ChiusoSuTelefono>
 
       <h2 className="text-lg font-semibold mt-4">
         Entrate, uscite e utile dell'agenzia
       </h2>
-      <p className="text-sm text-muted-foreground -mt-2">
-        Entrate: provvigioni maturate del foglio Saldi, incentivi e contributi
-        della compagnia (partite non assicurative) e altre entrate del conto
-        gestionale 257. Uscite: quelle del conto gestionale 257 di Banca di Asti
-        {info ? ` (estratto aggiornato al ${dataIt(info.periodo.al)})` : ""}, le
-        provvigioni lasciate ai broker e le trattenute della compagnia. Utile =
-        entrate meno tutte le uscite, IVA compresa.
-      </p>
-      <p className="text-sm font-medium -mt-2">
-        I prelievi di Fabio e Claudio NON sono dentro le uscite: sono la
-        distribuzione dell'utile e stanno sotto.
-      </p>
-      {data.modello && (
-        <p className="text-sm rounded border border-amber-300 bg-amber-50 px-3 py-2 -mt-1 dark:border-amber-800 dark:bg-amber-950/40">
-          {data.modello.nota}
+      <ChiusoSuTelefono titolo="Come si leggono questi numeri">
+        <p className="text-sm text-muted-foreground -mt-2">
+          Entrate: provvigioni maturate del foglio Saldi, incentivi e contributi
+          della compagnia (partite non assicurative) e altre entrate del conto
+          gestionale 257. Uscite: quelle del conto gestionale 257 di Banca di
+          Asti
+          {info ? ` (estratto aggiornato al ${dataIt(info.periodo.al)})` : ""},
+          le provvigioni lasciate ai broker e le trattenute della compagnia.
+          Utile = entrate meno tutte le uscite, IVA compresa.
         </p>
-      )}
+        <p className="text-sm font-medium -mt-2">
+          I prelievi di Fabio e Claudio NON sono dentro le uscite: sono la
+          distribuzione dell'utile e stanno sotto.
+        </p>
+        {data.modello && (
+          <p className="text-sm rounded border border-amber-300 bg-amber-50 px-3 py-2 -mt-1 dark:border-amber-800 dark:bg-amber-950/40">
+            {data.modello.nota}
+          </p>
+        )}
+      </ChiusoSuTelefono>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Riquadro
@@ -684,67 +686,83 @@ export const AndamentoPage = () => {
         />
       </div>
 
-      {m.valori.ponte && (
-        <PonteBanca p={m.valori.ponte} mese={nomeMese(m.mese)} />
-      )}
-      <Flussi mese={m.mese} />
-      <Pna mese={m.mese} />
-      <Commercialista mese={m.mese} />
-      <GraficoUtile mesi={ultimi} />
-      <VociMese m={m} />
-      {data.modello && m.valori.movimenti && (
-        <CorreggiVoce movimenti={m.valori.movimenti} info={data.modello} />
-      )}
-      <h2 className="text-base font-semibold -mb-2">Mese per mese</h2>
-      <TabellaMesi mesi={ultimi} anno={anno.data?.a} />
-      {data.modello && <DaClassificare info={data.modello} />}
-      <Estratti />
-      {data.modello && <CosaManca voci={data.modello.cosa_manca} />}
-      {data.modello && data.modello.spese_222.length > 0 && (
-        <Spese222
-          spese={data.modello.spese_222}
-          voci={data.modello.voci_tendina ?? []}
-          applicate={data.modello.correzioni_applicate ?? []}
-        />
-      )}
-      {fiscale.data ? (
-        <FiscaleBlocco f={fiscale.data} mese={m.mese} />
-      ) : (
-        info && <Tasse info={info} />
-      )}
+      <ChiusoSuTelefono titolo="Dal conto in banca all'utile">
+        {m.valori.ponte && (
+          <PonteBanca p={m.valori.ponte} mese={nomeMese(m.mese)} />
+        )}
+      </ChiusoSuTelefono>
+      <ChiusoSuTelefono titolo="Dove vanno i soldi">
+        <Flussi mese={m.mese} />
+      </ChiusoSuTelefono>
+      <ChiusoSuTelefono titolo="Partite non assicurative e ritenuta">
+        <Pna mese={m.mese} />
+      </ChiusoSuTelefono>
+      <ChiusoSuTelefono titolo="Riepilogo per il commercialista">
+        <Commercialista mese={m.mese} />
+      </ChiusoSuTelefono>
+      <ChiusoSuTelefono titolo="Utile per mese">
+        <GraficoUtile mesi={ultimi} />
+      </ChiusoSuTelefono>
+      <ChiusoSuTelefono titolo="Voci del mese">
+        <VociMese m={m} />
+        {data.modello && m.valori.movimenti && (
+          <CorreggiVoce movimenti={m.valori.movimenti} info={data.modello} />
+        )}
+      </ChiusoSuTelefono>
+      <ChiusoSuTelefono titolo="Mese per mese">
+        <h2 className="text-base font-semibold -mb-2">Mese per mese</h2>
+        <TabellaMesi mesi={ultimi} anno={anno.data?.a} />
+      </ChiusoSuTelefono>
+      <ChiusoSuTelefono titolo="Estratti, tasse e cose da chiarire">
+        {data.modello && <DaClassificare info={data.modello} />}
+        <Estratti />
+        {data.modello && <CosaManca voci={data.modello.cosa_manca} />}
+        {data.modello && data.modello.spese_222.length > 0 && (
+          <Spese222
+            spese={data.modello.spese_222}
+            voci={data.modello.voci_tendina ?? []}
+            applicate={data.modello.correzioni_applicate ?? []}
+          />
+        )}
+        {fiscale.data ? (
+          <FiscaleBlocco f={fiscale.data} mese={m.mese} />
+        ) : (
+          info && <Tasse info={info} />
+        )}
 
-      {info && (
-        <div className="rounded-lg border bg-card p-4 text-sm">
-          <h2 className="text-base font-semibold mb-2">
-            Cosa resta da chiarire
-          </h2>
-          <ul className="list-disc pl-5 space-y-1">
-            {info.da_chiarire.map((t) => (
-              <li key={t}>{t}</li>
-            ))}
-          </ul>
-          {!data.modello && info.da_classificare.length > 0 && (
-            <>
-              <div className="mt-3 font-medium">
-                Uscite che l'agente non sa ancora dove mettere
-              </div>
-              <ul className="mt-1 text-muted-foreground">
-                {info.da_classificare.map((r, i) => (
-                  <li
-                    key={i}
-                    className="flex justify-between gap-3 tabular-nums border-t py-1"
-                  >
-                    <span>
-                      {r.data} {r.chi}
-                    </span>
-                    <span>{euro(r.importo, 2)}</span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-      )}
+        {info && (
+          <div className="rounded-lg border bg-card p-4 text-sm">
+            <h2 className="text-base font-semibold mb-2">
+              Cosa resta da chiarire
+            </h2>
+            <ul className="list-disc pl-5 space-y-1">
+              {info.da_chiarire.map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+            {!data.modello && info.da_classificare.length > 0 && (
+              <>
+                <div className="mt-3 font-medium">
+                  Uscite che l'agente non sa ancora dove mettere
+                </div>
+                <ul className="mt-1 text-muted-foreground">
+                  {info.da_classificare.map((r, i) => (
+                    <li
+                      key={i}
+                      className="flex justify-between gap-3 tabular-nums border-t py-1"
+                    >
+                      <span>
+                        {r.data} {r.chi}
+                      </span>
+                      <span>{euro(r.importo, 2)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
+      </ChiusoSuTelefono>
       <Telefono />
     </div>
   );

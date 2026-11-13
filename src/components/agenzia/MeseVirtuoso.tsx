@@ -8,6 +8,8 @@ import { ResponsiveBar } from "@nivo/bar";
 import { useQuery } from "@tanstack/react-query";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
+import { ChiusoSuTelefono } from "./ChiusoSuTelefono";
+import { ErroreCaricamento } from "./ErroreCaricamento";
 
 type Movimento = {
   riga: number;
@@ -430,12 +432,7 @@ export const MeseVirtuoso = ({ mese }: { mese: string }) => {
         Carico il foglio Saldi...
       </div>
     );
-  if (error)
-    return (
-      <div className="text-sm text-red-700">
-        Errore nel caricare il foglio Saldi: {String(error.message ?? error)}
-      </div>
-    );
+  if (error) return <ErroreCaricamento cosa="il foglio Saldi" errore={error} />;
   const riga = data?.mesi.find((m) => m.mese === mese);
   if (!riga)
     return (
@@ -657,7 +654,11 @@ export const MeseVirtuoso = ({ mese }: { mese: string }) => {
           )}
         </div>
       )}
-      {ultimi.length > 1 && <GraficoAvanzo mesi={ultimi} />}
+      {ultimi.length > 1 && (
+        <ChiusoSuTelefono titolo="Avanzo per mese">
+          <GraficoAvanzo mesi={ultimi} />
+        </ChiusoSuTelefono>
+      )}
       <Controlli v={v} />
     </section>
   );

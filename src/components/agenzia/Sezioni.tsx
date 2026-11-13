@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
+import { ErroreCaricamento } from "./ErroreCaricamento";
 import { DecadeH } from "./DecadeH";
 
 type Meta = {
@@ -406,7 +407,7 @@ export const SezionePage = () => {
             />
           </div>
           {isPending && <div className="text-sm text-muted-foreground">Carico...</div>}
-          {error && <div className="text-sm text-red-700">Errore: {String((error as any).message)}</div>}
+          {error && <ErroreCaricamento cosa="la sezione" errore={error} />}
           {!isPending && visibili.length === 0 && (
             <div className="text-sm text-muted-foreground">Niente da mostrare con questi filtri.</div>
           )}

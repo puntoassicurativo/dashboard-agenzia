@@ -1,3 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
+
+import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
+import { useAccessoUtile } from "./Andamento";
 import { type RigaLato, FattoNota, TestoCopia, useRighe } from "./datiLati";
 import { ErroreCaricamento } from "./ErroreCaricamento";
 import { dataIt, euro, nomeMese } from "./formato";
@@ -19,20 +23,45 @@ const colore = (stato: string) =>
 
 // ------------------------------------------------------------------ decadi dei subagenti
 
+/** Public part of a decade row (sezione_righe, readable by every logged-in user). */
 interface DatiDecade {
   decade: string;
   subagente: string;
   stato: string;
   mail_di_fabio: string | null;
   contabile: { data: string } | null;
+}
+
+/** Amounts of a decade row: andamento_blocchi "sub_decadi", readable only by partners (RLS on utile_accesso). */
+interface CifreDecade {
   numeri_mail: Record<string, number> | null;
   calcolato: { provv_decade: number; incassi: number; titoli: number } | null;
   differenza: { provv_decade: number; incassi: number | null } | null;
   testo: string;
 }
 
-const SchedaDecade = ({ r }: { r: RigaLato<DatiDecade> }) => {
-  const d = r.dati;
+const useCifreDecadi = (isSocio: boolean) =>
+  useQuery({
+    queryKey: ["andamento", "sub_decadi"],
+    enabled: isSocio,
+    queryFn: async (): Promise<Record<string, CifreDecade>> => {
+      const { data, error } = await getSupabaseClient()
+        .from("andamento_blocchi")
+        .select("mese, valori")
+        .eq("tipo", "sub_decadi");
+      if (error) throw error;
+      const righe = (data ?? []) as { mese: string; valori: CifreDecade }[];
+      return Object.fromEntries(righe.map((x) => [x.mese, x.valori]));
+    },
+  });
+
+interface SchedaDecadeProps {
+  r: RigaLato<DatiDecade>;
+  cifre: CifreDecade | undefined;
+}
+
+const SchedaDecade = ({ r, cifre }: SchedaDecadeProps) => {
+  const d = { ...r.dati, ...cifre };
   return (
     <div
       className={`rounded-lg border bg-card p-3 text-sm flex flex-col gap-2 ${r.fatto ? "opacity-60" : ""}`}
@@ -54,7 +83,7 @@ const SchedaDecade = ({ r }: { r: RigaLato<DatiDecade> }) => {
               : `, differenza con la mail ${euro(d.differenza.provv_decade)}`)}
         </div>
       )}
-      <TestoCopia testo={d.testo} />
+      {d.testo && <TestoCopia testo={d.testo} />}
       <FattoNota r={r} />
     </div>
   );
@@ -62,6 +91,8 @@ const SchedaDecade = ({ r }: { r: RigaLato<DatiDecade> }) => {
 
 export const DecadiSubagenti = () => {
   const q = useRighe<DatiDecade>("SUB");
+  const accesso = useAccessoUtile();
+  const cifre = useCifreDecadi(accesso.data === true);
   if (q.isPending)
     return <div className="p-4 text-muted-foreground">Carico i dati...</div>;
   if (q.error) return <ErroreCaricamento errore={q.error} />;
@@ -84,7 +115,11 @@ export const DecadiSubagenti = () => {
             {q.data.righe
               .filter((r) => r.dati.decade === dec)
               .map((r) => (
-                <SchedaDecade key={r.chiave} r={r} />
+                <SchedaDecade
+                  key={r.chiave}
+                  r={r}
+                  cifre={cifre.data?.[r.chiave]}
+                />
               ))}
           </div>
         </details>

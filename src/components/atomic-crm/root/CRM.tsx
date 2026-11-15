@@ -287,6 +287,18 @@ const DesktopAdmin = (
   );
 };
 
+// react-admin resources whose queries may be kept offline on the phone (query key starts with the resource name)
+const RISORSE_CRM = [
+  "contacts",
+  "companies",
+  "deals",
+  "tasks",
+  "contact_notes",
+  "deal_notes",
+  "sales",
+  "tags",
+];
+
 const MobileAdmin = (
   props: CoreAdminProps & {
     dashboard?: DashboardComponent;
@@ -311,7 +323,20 @@ const MobileAdmin = (
   return (
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ persister: asyncStoragePersister }}
+      persistOptions={{
+        persister: asyncStoragePersister,
+        // 15/11/2026: the phone saves the query cache as JSON in localStorage. Agency data (Map objects in the
+        // Andamento pages, partners' figures) came back broken when the app was reopened ("attive.get is not a
+        // function", whole page down) and should not sit on the phone anyway. Only the CRM resources are kept;
+        // the buster drops the broken cache already saved on the phones.
+        buster: "agenzia-2026-11-15",
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) =>
+            query.state.status === "success" &&
+            typeof query.queryKey[0] === "string" &&
+            RISORSE_CRM.includes(query.queryKey[0]),
+        },
+      }}
     >
       <Admin
         queryClient={queryClient}

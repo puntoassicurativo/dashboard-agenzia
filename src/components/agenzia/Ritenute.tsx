@@ -2,6 +2,7 @@ import { useBlocchi } from "./datiLati";
 import { ErroreCaricamento } from "./ErroreCaricamento";
 import { dataIt, euro, nomeMese } from "./formato";
 import { Pagina } from "./Lato";
+import { RitenutaCompagnia } from "./RitenutaCompagnia";
 
 interface MeseRitenute {
   decadi: { decade: string; subagente: string; ritenuta: number }[];
@@ -25,6 +26,7 @@ export const Ritenute = () => {
   const mesi = Object.keys(q.data.mesi).sort().reverse();
   return (
     <Pagina titolo="Ritenute d'acconto" sotto={q.data.info?.nota}>
+      <RitenutaCompagnia />
       {mesi.length === 0 && (
         <div className="rounded-lg border bg-card p-4 text-sm">
           Nessun dato ancora.

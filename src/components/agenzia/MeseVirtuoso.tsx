@@ -91,6 +91,7 @@ export type SaldiMese = {
   avanzo_da_gennaio: number;
   saldo_conto_premi: number | null;
   altre_entrate: Movimento[];
+  tot_altre_entrate?: number;
   uscite_altro: (Movimento & { sottotipo: string })[];
   parziale: boolean;
   al: string | null;
@@ -451,10 +452,15 @@ export const MeseVirtuoso = ({ mese }: { mese: string }) => {
   const virtuoso = v.avanzo > 0;
   const nm = nomeMese(mese);
   const altreUscite = v.uscite_altro;
+  const altreEntrate =
+    v.tot_altre_entrate ?? v.altre_entrate.reduce((s, x) => s + x.importo, 0);
   const frase =
     `A ${nm} le provvigioni sono state ${intero(provv.valore)} euro` +
     (pna?.valore != null
       ? ` e le partite non assicurative ${pnaValore < 0 ? "meno " : ""}${intero(pnaValore)}`
+      : "") +
+    (altreEntrate > 0
+      ? `, più ${intero(altreEntrate)} di altre entrate una tantum`
       : "") +
     `; dal conto premi ne sono usciti ${intero(usciti)}` +
     (v.una_tantum > 0
@@ -569,7 +575,7 @@ export const MeseVirtuoso = ({ mese }: { mese: string }) => {
               ? `Col solo foglio Saldi: ${euro(v.avanzo_solo_saldi, 2)}`
               : "")
           }
-          come={`Provvigioni del mese (da BO) più partite non assicurative (rimessa sul Banco Desio), meno il girato ai conti dell'agenzia (dagli estratti conto), le provvigioni ai broker e le altre uscite del foglio Saldi. Le altre entrate del foglio non contano. ${agg}.`}
+          come={`Provvigioni del mese (da BO) più partite non assicurative (rimessa sul Banco Desio) più le altre entrate del foglio Saldi (una tantum), meno il girato ai conti dell'agenzia (dagli estratti conto), le provvigioni ai broker e le altre uscite del foglio Saldi. ${agg}.`}
         />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -602,36 +608,22 @@ export const MeseVirtuoso = ({ mese }: { mese: string }) => {
           />
         </div>
       </div>
-      {(v.altre_entrate.length > 0 || altreUscite.length > 0) && (
+      {(altreEntrate > 0 || altreUscite.length > 0) && (
         <div className="rounded-lg border bg-card p-4 text-sm">
-          {v.altre_entrate.length > 0 && (
-            <>
-              <div className="font-medium">
-                Altre entrate del foglio Saldi{" "}
+          {altreEntrate > 0 && (
+            <div className="flex justify-between gap-3 font-medium tabular-nums">
+              <span>
+                Altre entrate (una tantum){" "}
                 <span className="font-normal text-muted-foreground">
-                  (non sono provvigioni e non sono un ricavo)
+                  (contate nell'avanzo)
                 </span>
-              </div>
-              <ul className="mt-1 tabular-nums">
-                {v.altre_entrate.map((x) => (
-                  <li
-                    key={x.riga}
-                    className="flex justify-between gap-3 border-t py-1"
-                  >
-                    <span>
-                      {dataIt(x.data)} {x.descrizione}
-                    </span>
-                    <span>{euro(x.importo, 2)}</span>
-                  </li>
-                ))}
-              </ul>
-            </>
+              </span>
+              <span>{euro(altreEntrate, 2)}</span>
+            </div>
           )}
           {altreUscite.length > 0 && (
             <>
-              <div
-                className={`font-medium ${v.altre_entrate.length > 0 ? "mt-3" : ""}`}
-              >
+              <div className={`font-medium ${altreEntrate > 0 ? "mt-3" : ""}`}>
                 Altre uscite del foglio Saldi{" "}
                 <span className="font-normal text-muted-foreground">
                   (contate nell'avanzo)

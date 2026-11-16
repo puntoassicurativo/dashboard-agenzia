@@ -71,10 +71,50 @@ describe("FiscaleBlocco", () => {
       .toBeVisible();
   });
 
-  it("warns only when the projected taxable profit is above the threshold", async () => {
-    const sopra = await render(<AvvisoUtile f={fiscale(3300, true)} />);
-    await expect.element(sopra.getByText(/sopra la soglia di/)).toBeVisible();
-    const sotto = await render(<AvvisoUtile f={fiscale(1000, false)} />);
-    expect(sotto.container.textContent).toBe("");
+  it("says how many deductible costs are missing to reach the target", async () => {
+    const f = {
+      ...fiscale(3300, true),
+      obiettivo: 3000,
+      costi_mancanti: 300,
+      obiettivo_come: "costi di prova",
+    };
+    const screen = await render(<AvvisoUtile f={f} />);
+    await expect
+      .element(
+        screen.getByText(
+          /Obiettivo di Fabio 3\.000\s€ di utile\. .*fine 2030 è 3\.300\s€: per arrivarci servono circa 300\s€ di costi deducibili in più \(costi di prova\)\. È una stima\./,
+        ),
+      )
+      .toBeVisible();
+    await expect
+      .element(screen.getByText(/Utile vero previsto a fine 2030: 500\s€/))
+      .toBeVisible();
+    expect(screen.container.textContent).not.toMatch(/soglia|Attenzione/);
+  });
+
+  it.each([
+    [3000, 0],
+    [2500, -500],
+  ])(
+    "says the target is reached when no costs are missing (projected %i, missing %i)",
+    async (proiettato, mancanti) => {
+      const f = {
+        ...fiscale(proiettato, false),
+        obiettivo: 3000,
+        costi_mancanti: mancanti,
+      };
+      const screen = await render(<AvvisoUtile f={f} />);
+      await expect
+        .element(screen.getByText(/^Obiettivo raggiunto/))
+        .toBeVisible();
+      expect(screen.container.textContent).not.toMatch(/servono circa/);
+    },
+  );
+
+  it("works with rows written before the target (only the threshold)", async () => {
+    const screen = await render(<AvvisoUtile f={fiscale(3300, true)} />);
+    await expect
+      .element(screen.getByText(/servono circa 300\s€ di costi deducibili/))
+      .toBeVisible();
   });
 });

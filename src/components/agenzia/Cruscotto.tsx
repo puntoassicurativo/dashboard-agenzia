@@ -9,6 +9,8 @@ import { useState } from "react";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
 import { ErroreCaricamento } from "./ErroreCaricamento";
+import { useBloccoFiscale } from "./Fiscale";
+import { Sezione } from "./Sezione";
 
 type Delta = {
   np: number;
@@ -86,7 +88,7 @@ const dataIt = (iso: string | null) =>
   iso ? new Date(iso + "T12:00:00").toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" }) : "";
 const nomeMese = (aaaa_mm: string) => MESI[parseInt(aaaa_mm.slice(5, 7), 10) - 1];
 
-const useCruscotto = () =>
+export const useCruscotto = () =>
   useQuery({
     queryKey: ["cruscotto", "ultimo"],
     queryFn: async () => {
@@ -231,8 +233,28 @@ const GraficoMesi = ({ mesi }: { mesi: Mese[] }) => {
   );
 };
 
+const ComeLeggere = () => (
+  <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground flex flex-col gap-1">
+    <div className="text-foreground font-medium">Come leggere</div>
+    <span>Delta = nuova produzione meno annullamenti, in premio imponibile.</span>
+    <span>Auto e RE come nella mail di Vittoria: gli infortuni del conducente stanno nel RE.</span>
+    <span>Confronti sullo stesso periodo dell'anno scorso.</span>
+  </div>
+);
+
 export const Cruscotto = () => {
   const { data, isPending, error } = useCruscotto();
+  // partners only: the fiscale block is protected by RLS, for everyone else it is empty and the tile is not shown
+  const fiscale = useBloccoFiscale();
+  const fp = fiscale.data?.proiezione;
+  const obiettivo =
+    fiscale.data && fp
+      ? {
+          previsto: fp.utile_fiscale,
+          obiettivo: fiscale.data.obiettivo ?? fiscale.data.soglia,
+          mancanti: fiscale.data.costi_mancanti ?? fp.utile_fiscale - (fiscale.data.obiettivo ?? fiscale.data.soglia),
+        }
+      : null;
   if (isPending) return <div className="p-4 text-muted-foreground">Carico i dati...</div>;
   if (error) return <ErroreCaricamento errore={error} />;
   if (!data) return <div className="p-4 text-muted-foreground">Nessun dato ancora: l'agente non ha ancora girato.</div>;
@@ -294,15 +316,29 @@ export const Cruscotto = () => {
         <RiquadroDelta titolo="Delta auto" d={v.delta_auto} mese={p.mese} />
         <RiquadroDelta titolo="Delta RE" d={v.delta_re} mese={p.mese} />
 
-        <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground flex flex-col gap-1">
-          <div className="text-foreground font-medium">Come leggere</div>
-          <span>Delta = nuova produzione meno annullamenti, in premio imponibile.</span>
-          <span>Auto e RE come nella mail di Vittoria: gli infortuni del conducente stanno nel RE.</span>
-          <span>Confronti sullo stesso periodo dell'anno scorso.</span>
-        </div>
+        {obiettivo ? (
+          <Riquadro titolo="Utile fiscale previsto a fine anno" valore={euro(obiettivo.previsto)}>
+            <span className="text-muted-foreground">
+              {obiettivo.mancanti > 0
+                ? `obiettivo ${euro(obiettivo.obiettivo)}: mancano circa ${euro(obiettivo.mancanti)} di costi`
+                : `obiettivo ${euro(obiettivo.obiettivo)} raggiunto`}
+            </span>
+          </Riquadro>
+        ) : (
+          <ComeLeggere />
+        )}
       </div>
 
-      {data.mensile && <GraficoMesi mesi={data.mensile} />}
+      {obiettivo && (
+        <Sezione id="cruscotto.come-leggere" titolo="Come leggere">
+          <ComeLeggere />
+        </Sezione>
+      )}
+      {data.mensile && (
+        <Sezione id="cruscotto.mesi" titolo="Incassi e provvigioni mese per mese" riassunto={`${data.mensile.length} mesi`}>
+          <GraficoMesi mesi={data.mensile} />
+        </Sezione>
+      )}
     </div>
   );
 };

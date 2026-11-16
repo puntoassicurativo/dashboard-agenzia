@@ -1,7 +1,7 @@
 /**
  * "How much becomes profit" part of the Andamento page: revenue, costs, deductible costs, estimated taxable
  * profit and taxes, from January to the last complete month and projected to December, plus a small box for the
- * selected month and a yellow warning above the threshold. Data: andamento_blocchi type "fiscale" (agent,
+ * selected month and Fabio's target with the deductible costs still missing. Data: andamento_blocchi type "fiscale" (agent,
  * fiscale.py). Everything here is an estimate; the real figure comes from the accountant's tax return.
  */
 import { useQuery } from "@tanstack/react-query";
@@ -44,6 +44,10 @@ export type Fiscale = {
   >;
   avviso: boolean;
   soglia: number;
+  /** Fabio's target taxable profit (16/11/2026); older rows only have soglia. */
+  obiettivo?: number;
+  obiettivo_come?: string;
+  costi_mancanti?: number | null;
   mesi_senza_ritenuta?: string[];
   da_confermare: string[];
   ipotesi: string[];
@@ -204,14 +208,37 @@ export const FiscaleBlocco = ({ f, mese }: { f: Fiscale; mese: string }) => {
   );
 };
 
-export const AvvisoUtile = ({ f }: { f: Fiscale }) =>
-  f.avviso && f.proiezione ? (
-    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950/40">
-      <strong>Attenzione:</strong> l'utile fiscale previsto a fine {f.anno} è{" "}
-      {euro(f.proiezione.utile_fiscale)}, sopra la soglia di {euro(f.soglia)}. È
-      una stima.
+/**
+ * Fabio's target (16/11/2026): 175,000 of profit. Neutral box with how many more deductible costs are needed to
+ * get there with today's figures, or "target reached" when none are needed. Next to it, the projected real profit.
+ */
+export const AvvisoUtile = ({ f }: { f: Fiscale }) => {
+  if (!f.proiezione) return null;
+  const obiettivo = f.obiettivo ?? f.soglia;
+  const mancanti = f.costi_mancanti ?? f.proiezione.utile_fiscale - obiettivo;
+  const come = f.obiettivo_come ? ` (${f.obiettivo_come})` : "";
+  return (
+    <div className="rounded-lg border bg-card p-4 text-sm">
+      {mancanti > 0 ? (
+        <p>
+          Obiettivo di Fabio {euro(obiettivo)} di utile. Con i conti di oggi
+          l'utile fiscale previsto a fine {f.anno} è{" "}
+          {euro(f.proiezione.utile_fiscale)}: per arrivarci servono circa{" "}
+          {euro(mancanti)} di costi deducibili in più{come}. È una stima.
+        </p>
+      ) : (
+        <p>
+          Obiettivo raggiunto: l'utile fiscale previsto a fine {f.anno} è{" "}
+          {euro(f.proiezione.utile_fiscale)}, l'obiettivo di Fabio è{" "}
+          {euro(obiettivo)}. È una stima.
+        </p>
+      )}
+      <p className="mt-1 text-muted-foreground">
+        Utile vero previsto a fine {f.anno}: {euro(f.proiezione.utile)}.
+      </p>
     </div>
-  ) : null;
+  );
+};
 
 export const FiscaleSezione = ({ mese }: { mese: string }) => {
   const q = useBloccoFiscale();

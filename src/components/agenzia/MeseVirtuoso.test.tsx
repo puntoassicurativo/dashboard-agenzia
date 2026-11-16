@@ -167,7 +167,14 @@ describe("MeseVirtuoso", () => {
         screen.getByText("Saldo del conto premi a fine mese (foglio Saldi)"),
       )
       .toBeVisible();
-    await expect.element(screen.getByText(/non sono un ricavo/)).toBeVisible();
+    await expect
+      .element(screen.getByText(/^Altre entrate \(una tantum\)/))
+      .toBeVisible();
+    await expect
+      .element(screen.getByText(/più 25 di altre entrate una tantum/))
+      .toBeVisible();
+    // the description of the Saldi row never reaches the page
+    expect(screen.container.textContent).not.toMatch(/entrata di prova/);
   });
 
   it("uses BO for commissions and shows the gap with the Saldi sheet", async () => {

@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
 import { useAccessoUtile } from "./Andamento";
+import { BrokerSaldi } from "./BrokerSaldi";
+import { DaFare } from "./DaFare";
 import { type RigaLato, FattoNota, TestoCopia, useRighe } from "./datiLati";
 import { ErroreCaricamento } from "./ErroreCaricamento";
 import { dataIt, euro, nomeMese } from "./formato";
@@ -15,10 +17,12 @@ const Aggiornato = ({ iso }: { iso?: string }) =>
   ) : null;
 
 const colore = (stato: string) =>
-  /fatto|ricevuta|contabile arrivat|mandate a tutti/i.test(stato)
-    ? "text-green-700"
-    : /ritardo|nessuna risposta|da mandare/i.test(stato)
-      ? "text-red-700"
+  /diverso|non arrivato|ritardo|nessuna risposta|da mandare/i.test(stato)
+    ? "text-red-700"
+    : /versamento in banca|fatto|ricevuta|contabile arrivat|mandate a tutti/i.test(
+          stato,
+        )
+      ? "text-green-700"
       : "text-amber-700";
 
 // ------------------------------------------------------------------ decadi dei subagenti
@@ -38,6 +42,13 @@ interface CifreDecade {
   calcolato: { provv_decade: number; incassi: number; titoli: number } | null;
   differenza: { provv_decade: number; incassi: number | null } | null;
   testo: string;
+  /** transfer of the decade on the premium account 222 (16/11/2026, phase 7) */
+  versamento?: {
+    stato: string;
+    data: string | null;
+    importo: number | null;
+    atteso: number | null;
+  } | null;
 }
 
 const useCifreDecadi = (isSocio: boolean) =>
@@ -81,6 +92,17 @@ const SchedaDecade = ({ r, cifre }: SchedaDecadeProps) => {
             (Math.abs(d.differenza.provv_decade) < 0.01
               ? ", uguale alla mail di Fabio"
               : `, differenza con la mail ${euro(d.differenza.provv_decade)}`)}
+        </div>
+      )}
+      {d.versamento?.importo != null && (
+        <div
+          className={`tabular-nums ${d.versamento.stato === "diverso" ? "text-red-700" : "text-muted-foreground"}`}
+        >
+          Versato {euro(d.versamento.importo)}
+          {d.versamento.atteso != null &&
+            (d.versamento.stato === "diverso"
+              ? `, atteso ${euro(d.versamento.atteso)} (bonifico della mail di Fabio)`
+              : ", uguale alla mail di Fabio")}
         </div>
       )}
       {d.testo && <TestoCopia testo={d.testo} />}
@@ -150,6 +172,7 @@ export const EstrattiBroker = () => {
     .reverse();
   return (
     <Pagina titolo="Estratti conto broker" sotto={q.data.info?.riepilogo.nota}>
+      <BrokerSaldi />
       {mesi.map((mese) => (
         <div key={mese} className="flex flex-col gap-2">
           <h2 className="text-base font-semibold">{nomeMese(mese)}</h2>
@@ -202,6 +225,12 @@ export const Scadenze = () => {
   );
   const aperte = righe.filter((r) => !r.fatto && !/fatto/.test(r.dati.stato));
   const chiuse = righe.filter((r) => r.fatto || /fatto/.test(r.dati.stato));
+  // 16/11/2026: open deadlines older than a week go in a closed block, the week's ones stay in view
+  const unaSettimanaFa = new Date(Date.now() - 7 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const recenti = aperte.filter((r) => r.dati.scadenza >= unaSettimanaFa);
+  const vecchie = aperte.filter((r) => r.dati.scadenza < unaSettimanaFa);
   const Riga = ({ r }: { r: RigaLato<DatiScadenza> }) => (
     <div className="rounded-lg border bg-card p-3 text-sm flex flex-col gap-1">
       <div className="flex flex-wrap justify-between gap-2">
@@ -218,10 +247,23 @@ export const Scadenze = () => {
   );
   return (
     <Pagina titolo="Scadenze" sotto={q.data.info?.riepilogo.nota}>
-      <h2 className="text-base font-semibold">Da fare ({aperte.length})</h2>
-      {aperte.map((r) => (
+      <DaFare scadenze={righe.filter((r) => !r.fatto).map((r) => r.dati)} />
+      <h2 className="text-base font-semibold">Da fare ({recenti.length})</h2>
+      {recenti.map((r) => (
         <Riga key={r.chiave} r={r} />
       ))}
+      {vecchie.length > 0 && (
+        <details>
+          <summary className="cursor-pointer select-none text-base font-semibold">
+            Più vecchie ancora aperte ({vecchie.length})
+          </summary>
+          <div className="flex flex-col gap-2 mt-2">
+            {vecchie.map((r) => (
+              <Riga key={r.chiave} r={r} />
+            ))}
+          </div>
+        </details>
+      )}
       <details>
         <summary className="cursor-pointer select-none text-base font-semibold">
           Fatte ({chiuse.length})

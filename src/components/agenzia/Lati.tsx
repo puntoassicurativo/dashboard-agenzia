@@ -6,6 +6,7 @@ import {
   Scadenze,
 } from "./AmministrazionePagine";
 import { FatturePagamenti } from "./FatturePagamenti";
+import { FattureSubagenti } from "./FattureSubagenti";
 import { Lato } from "./Lato";
 import { PerLoStudio } from "./PerLoStudio";
 import { Personale } from "./Personale";
@@ -64,6 +65,11 @@ export const AmministrazionePage = () => (
         chiave: "decadi",
         titolo: "Decadi subagenti",
         elemento: <DecadiSubagenti />,
+      },
+      {
+        chiave: "fatture-subagenti",
+        titolo: "Fatture subagenti",
+        elemento: <FattureSubagenti />,
       },
       {
         chiave: "broker",

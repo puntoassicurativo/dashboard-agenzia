@@ -9,7 +9,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Fragment, useState } from "react";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
-import { ChiusoSuTelefono } from "./ChiusoSuTelefono";
 import { ErroreCaricamento } from "./ErroreCaricamento";
 import {
   CorreggiVoce,
@@ -25,9 +24,11 @@ import { Commercialista } from "./Commercialista";
 import { Estratti } from "./Estratti";
 import { AvvisoUtile, FiscaleBlocco, useBloccoFiscale } from "./Fiscale";
 import { Flussi } from "./Flussi";
-import { MeseVirtuoso } from "./MeseVirtuoso";
+import { MeseVirtuoso, useBlocchiSaldi } from "./MeseVirtuoso";
 import { Pna } from "./Pna";
+import { Sezione } from "./Sezione";
 import { Telefono } from "./Telefono";
+import { VideataAndamento } from "./Videata";
 
 type Voci = Record<string, number>;
 type Dettaglio = Record<string, { chi: string; importo: number }[]>;
@@ -44,6 +45,8 @@ type ValoriMese = {
   dal: string;
   al: string;
   ponte?: Ponte;
+  /** withholding of the month (modello.py, from the decade or estimated) */
+  ritenuta?: number | null;
   movimenti?: {
     chiave: string;
     data: string;
@@ -571,6 +574,7 @@ export const AndamentoPage = () => {
   const accesso = useAccessoUtile();
   const anno = useBloccoAnno();
   const fiscale = useBloccoFiscale();
+  const saldi = useBlocchiSaldi();
   const { data, isPending, error } = useAndamento();
   const completi = (data?.mesi ?? []).filter((m) => !m.valori.parziale);
   const [scelto, setScelto] = useState<string | null>(null);
@@ -606,6 +610,10 @@ export const AndamentoPage = () => {
         .reduce((s, [, v]) => s + v, 0)
     : undefined;
   const info = data.info;
+  const saldiMese = saldi.data?.mesi.find((x) => x.mese === m.mese)?.v;
+  const pnaMese = Object.entries(m.valori.entrate)
+    .filter(([k]) => k.startsWith("Partite non assicurative"))
+    .reduce((s, [, v]) => s + v, 0);
 
   return (
     <div className="flex flex-col gap-4 max-w-6xl mx-auto w-full px-4 pt-2 pb-28 md:px-0 md:pt-0 md:pb-8">
@@ -626,16 +634,35 @@ export const AndamentoPage = () => {
           </select>
         </label>
       </div>
+      <VideataAndamento mese={m.mese} />
       {fiscale.data && <AvvisoUtile f={fiscale.data} />}
-      <MeseVirtuoso mese={m.mese} />
-      <ChiusoSuTelefono titolo="Da gennaio">
+      <Sezione
+        id="andamento.mese-virtuoso"
+        titolo="Il mese è stato virtuoso?"
+        riassunto={
+          saldiMese
+            ? `${nomeMese(m.mese)}: avanzo ${euro(saldiMese.avanzo)}`
+            : undefined
+        }
+      >
+        <MeseVirtuoso mese={m.mese} />
+      </Sezione>
+      <Sezione
+        id="andamento.da-gennaio"
+        titolo="Da gennaio"
+        riassunto={
+          anno.data?.a.modello
+            ? `utile da gennaio ${euro(anno.data.a.modello.utile)}`
+            : undefined
+        }
+      >
         <DaGennaio />
-      </ChiusoSuTelefono>
-
-      <h2 className="text-lg font-semibold mt-4">
-        Entrate, uscite e utile dell'agenzia
-      </h2>
-      <ChiusoSuTelefono titolo="Come si leggono questi numeri">
+      </Sezione>
+      <Sezione
+        id="andamento.entrate-uscite"
+        titolo="Entrate, uscite e utile dell'agenzia"
+        riassunto={`${nomeMese(m.mese)}: utile ${euro(m.valori.utile)}`}
+      >
         <p className="text-sm text-muted-foreground -mt-2">
           Entrate: provvigioni maturate del foglio Saldi, incentivi e contributi
           della compagnia (partite non assicurative) e altre entrate del conto
@@ -654,66 +681,116 @@ export const AndamentoPage = () => {
             {data.modello.nota}
           </p>
         )}
-      </ChiusoSuTelefono>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Riquadro
-          titolo={`Entrate di ${nomeMese(m.mese)}`}
-          valore={euro(m.valori.tot_entrate)}
-          nota={confronto(prec?.valori.tot_entrate, prec?.mese)}
-        />
-        <Riquadro
-          titolo="Uscite dell'agenzia"
-          valore={euro(-m.valori.tot_uscite)}
-          nota={confronto(
-            prec ? -prec.valori.tot_uscite : undefined,
-            prec?.mese,
-          )}
-        />
-        <Riquadro
-          titolo="Utile dell'agenzia"
-          valore={euro(m.valori.utile)}
-          verde={m.valori.utile >= 0}
-          nota={confronto(prec?.valori.utile, prec?.mese)}
-        />
-        <Riquadro
-          titolo="Prelievi di Fabio e Claudio (sotto l'utile)"
-          valore={euro(-prelievi)}
-          nota={confronto(
-            prelieviPrec != null ? -prelieviPrec : undefined,
-            prec?.mese,
-          )}
-        />
-      </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Riquadro
+            titolo={`Entrate di ${nomeMese(m.mese)}`}
+            valore={euro(m.valori.tot_entrate)}
+            nota={confronto(prec?.valori.tot_entrate, prec?.mese)}
+          />
+          <Riquadro
+            titolo="Uscite dell'agenzia"
+            valore={euro(-m.valori.tot_uscite)}
+            nota={confronto(
+              prec ? -prec.valori.tot_uscite : undefined,
+              prec?.mese,
+            )}
+          />
+          <Riquadro
+            titolo="Utile dell'agenzia"
+            valore={euro(m.valori.utile)}
+            verde={m.valori.utile >= 0}
+            nota={confronto(prec?.valori.utile, prec?.mese)}
+          />
+          <Riquadro
+            titolo="Prelievi di Fabio e Claudio (sotto l'utile)"
+            valore={euro(-prelievi)}
+            nota={confronto(
+              prelieviPrec != null ? -prelieviPrec : undefined,
+              prec?.mese,
+            )}
+          />
+        </div>
+      </Sezione>
 
-      <ChiusoSuTelefono titolo="Dal conto in banca all'utile">
+      <Sezione
+        id="andamento.ponte"
+        titolo="Dal conto in banca all'utile"
+        riassunto={
+          m.valori.ponte
+            ? `rimasto sul 257 ${euro(m.valori.ponte.rimasto_257)}`
+            : undefined
+        }
+      >
         {m.valori.ponte && (
           <PonteBanca p={m.valori.ponte} mese={nomeMese(m.mese)} />
         )}
-      </ChiusoSuTelefono>
-      <ChiusoSuTelefono titolo="Dove vanno i soldi">
+      </Sezione>
+      <Sezione
+        id="andamento.flussi"
+        titolo="Dove vanno i soldi"
+        riassunto={
+          saldiMese?.mv_girato
+            ? `${nomeMese(m.mese)}: girato ${euro(saldiMese.mv_girato.valore)}`
+            : undefined
+        }
+      >
         <Flussi mese={m.mese} />
-      </ChiusoSuTelefono>
-      <ChiusoSuTelefono titolo="Partite non assicurative e ritenuta">
+      </Sezione>
+      <Sezione
+        id="andamento.pna"
+        titolo="Partite non assicurative e ritenuta"
+        riassunto={
+          pnaMese !== 0
+            ? `${nomeMese(m.mese)}: ${euro(pnaMese)}` +
+              (m.valori.ritenuta != null
+                ? `, ritenuta ${euro(m.valori.ritenuta)}`
+                : "")
+            : undefined
+        }
+      >
         <Pna mese={m.mese} />
-      </ChiusoSuTelefono>
-      <ChiusoSuTelefono titolo="Riepilogo per il commercialista">
+      </Sezione>
+      <Sezione
+        id="andamento.commercialista"
+        titolo="Riepilogo per il commercialista"
+      >
         <Commercialista mese={m.mese} />
-      </ChiusoSuTelefono>
-      <ChiusoSuTelefono titolo="Utile per mese">
+      </Sezione>
+      <Sezione
+        id="andamento.utile-mesi"
+        titolo="Utile per mese"
+        riassunto={`ultimi ${ultimi.length} mesi`}
+      >
         <GraficoUtile mesi={ultimi} />
-      </ChiusoSuTelefono>
-      <ChiusoSuTelefono titolo="Voci del mese">
+      </Sezione>
+      <Sezione
+        id="andamento.voci"
+        titolo="Voci del mese"
+        riassunto={`${nomeMese(m.mese)}: uscite ${euro(-m.valori.tot_uscite)}`}
+      >
         <VociMese m={m} />
         {data.modello && m.valori.movimenti && (
           <CorreggiVoce movimenti={m.valori.movimenti} info={data.modello} />
         )}
-      </ChiusoSuTelefono>
-      <ChiusoSuTelefono titolo="Mese per mese">
+      </Sezione>
+      <Sezione
+        id="andamento.mese-per-mese"
+        titolo="Mese per mese"
+        riassunto={`ultimi ${ultimi.length} mesi`}
+      >
         <h2 className="text-base font-semibold -mb-2">Mese per mese</h2>
         <TabellaMesi mesi={ultimi} anno={anno.data?.a} />
-      </ChiusoSuTelefono>
-      <ChiusoSuTelefono titolo="Estratti, tasse e cose da chiarire">
+      </Sezione>
+      <Sezione
+        id="andamento.estratti-tasse"
+        titolo="Estratti, tasse e cose da chiarire"
+        riassunto={
+          fiscale.data?.proiezione
+            ? `tasse dei soci previste ${euro(fiscale.data.proiezione.tasse_due_soci)}`
+            : undefined
+        }
+      >
         {data.modello && <DaClassificare info={data.modello} />}
         <Estratti />
         {data.modello && <CosaManca voci={data.modello.cosa_manca} />}
@@ -762,7 +839,7 @@ export const AndamentoPage = () => {
             )}
           </div>
         )}
-      </ChiusoSuTelefono>
+      </Sezione>
       <Telefono />
     </div>
   );

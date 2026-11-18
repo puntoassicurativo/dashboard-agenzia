@@ -4,7 +4,7 @@
  * scritti dall'agente agenti\cruscotto_agenzia (sezioni.py).
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
@@ -84,6 +84,57 @@ export const SEZIONI: Record<string, Meta> = {
     frequenza: "a ogni decade nuova",
     titoloRiga: "Contraente",
   },
+  I: {
+    titolo: "Insoluti scaduti",
+    breve: "Titoli scaduti negli ultimi 60 giorni e non ancora pagati: il secondo sollecito",
+    descrizione:
+      "Il Promemoria avvisa la settimana prima della scadenza; qui i titoli già scaduti (NA014, stato I) dei quattro punti vendita di Imperia e Sanremo, senza PIP, PAC, vita di risparmio e senza le vincolate (sezione A). Testo pronto da copiare o da aprire su WhatsApp.",
+    frequenza: "ogni giorno",
+    titoloRiga: "Cliente",
+  },
+  L: {
+    titolo: "Rinnovi auto con aumento",
+    breve: "Rinnovi dei prossimi due mesi con il premio oltre il 15% sopra quello di prima",
+    descrizione:
+      "Da chiamare prima del rinnovo: dire l'aumento in euro al mese e avere pronta un'alternativa (franchigia, garanzie). Fonte NA004, quattro punti vendita di Imperia e Sanremo.",
+    frequenza: "ogni lunedi'",
+    titoloRiga: "Cliente",
+  },
+};
+
+/** Ready-made text for the customer, with a Copy button (decision of 18/11/2026: nothing is sent automatically). */
+const TestoPronto = ({ testo }: { testo: string }) => {
+  const [copiato, setCopiato] = useState(false);
+  const rif = useRef<HTMLParagraphElement>(null);
+  const copia = async () => {
+    try {
+      await navigator.clipboard.writeText(testo);
+      setCopiato(true);
+    } catch {
+      // clipboard refused (old browser, no permission): select the text so it can be copied by hand
+      const sel = window.getSelection();
+      if (sel && rif.current) {
+        const range = document.createRange();
+        range.selectNodeContents(rif.current);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }
+  };
+  return (
+    <div className="rounded-md border bg-pa-blu-chiaro/50 p-2.5 text-sm">
+      <p ref={rif} className="whitespace-pre-wrap">
+        {testo}
+      </p>
+      <button
+        type="button"
+        onClick={copia}
+        className="mt-2 rounded-md border bg-white px-3 py-1 text-sm font-medium text-pa-blu"
+      >
+        {copiato ? "Copiato" : "Copia"}
+      </button>
+    </div>
+  );
 };
 
 type Info = { sezione: string; aggiornato_il: string; riepilogo: any };
@@ -231,7 +282,7 @@ const Scheda = ({ r, campoTitolo }: { r: Riga; campoTitolo: string }) => {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sezione_righe", r.sezione] }),
   });
-  const { telefono, whatsapp, _campi, ...resto } = r.dati;
+  const { telefono, whatsapp, testo, _campi, ...resto } = r.dati;
   const titolo = resto[campoTitolo] ?? r.chiave;
   // l'ordine dei campi lo da' l'agente in _campi (jsonb non lo conserva)
   const ordine: string[] = Array.isArray(_campi) ? _campi : Object.keys(resto);
@@ -267,6 +318,7 @@ const Scheda = ({ r, campoTitolo }: { r: Riga; campoTitolo: string }) => {
           </div>
         ))}
       </dl>
+      {typeof testo === "string" && testo && <TestoPronto testo={testo} />}
       {(telefono || whatsapp) && (
         <div className="flex flex-wrap gap-2">
           {telefono && (
@@ -439,6 +491,8 @@ const Riepilogo = ({ s, r }: { s: string; r: any }) => {
   if (s === "G") {
     Object.entries(r.per_tipo ?? {}).forEach(([k, v]) => voci.push([k, v]));
   }
+  if (s === "I" || s === "L")
+    (Array.isArray(r.conteggi) ? r.conteggi : []).forEach(([k, v]: [string, any]) => voci.push([k, v]));
   const vis = voci.filter(([, v]) => v != null);
   if (!vis.length) return null;
   return (

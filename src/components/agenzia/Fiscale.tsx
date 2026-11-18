@@ -260,8 +260,8 @@ export const AvvisoUtile = ({ f }: { f: Fiscale }) => {
     <div className="rounded-lg border bg-card p-4 text-sm">
       {mancanti > 0 ? (
         <p>
-          Obiettivo di Fabio {euro(obiettivo)} di utile. Con i conti di oggi
-          l'utile fiscale previsto a fine {f.anno} è{" "}
+          Obiettivo di Fabio {euro(obiettivo)} di utile fiscale. Con i conti di
+          oggi l'utile fiscale previsto a fine {f.anno} è{" "}
           {euro(f.proiezione.utile_fiscale)}: per arrivarci servono circa{" "}
           {euro(mancanti)} di costi deducibili in più{come}. È una stima.
         </p>
@@ -272,9 +272,35 @@ export const AvvisoUtile = ({ f }: { f: Fiscale }) => {
           {euro(obiettivo)}. È una stima.
         </p>
       )}
+      {f.costi_previsti && f.utile_fiscale_con_previsti != null && (
+        <div className="mt-2 border-t pt-2">
+          <p className="font-medium">
+            Con i costi previsti da Fabio: {euro(f.utile_fiscale_con_previsti)}
+            {f.sopra_obiettivo != null &&
+              (f.sopra_obiettivo >= 0
+                ? `, circa ${euro(f.sopra_obiettivo)} sopra l'obiettivo`
+                : `, mancano ancora circa ${euro(-f.sopra_obiettivo)}`)}
+            .
+          </p>
+          <ul className="text-muted-foreground">
+            {f.costi_previsti.voci.map((v) => (
+              <li key={v.voce}>
+                {v.voce}: {euro(v.resta)}
+                {v.pagato > 0 && ` (già pagati ${euro(v.pagato)})`}
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted-foreground">
+            {f.costi_previsti.nota}
+          </p>
+        </div>
+      )}
       <p className="mt-1 text-muted-foreground">
         Utile vero previsto a fine {f.anno}: {euro(f.proiezione.utile)}.
       </p>
+      {f.anno_dopo_nota && (
+        <p className="mt-1 text-xs text-muted-foreground">{f.anno_dopo_nota}</p>
+      )}
     </div>
   );
 };

@@ -13,6 +13,8 @@ import { PerLoStudio } from "./PerLoStudio";
 import { Personale } from "./Personale";
 import { Ritenute } from "./Ritenute";
 import { SezioniPage } from "./Sezioni";
+import { TutteLeFatture } from "./TutteLeFatture";
+import { ChiediCondizioni } from "./ChiediCondizioni";
 
 /** Contabilita' (numbers, partners only: the data is protected by RLS, the menu entry is hidden too). */
 export const ContabilitaPage = () => {
@@ -29,6 +31,12 @@ export const ContabilitaPage = () => {
     <Lato
       base="/contabilita"
       voci={[
+        // Fabio 17/11/2026 and decision 11 of Lorenzo (18/11/2026): Contabilita' opens on all the invoices
+        {
+          chiave: "tutte-le-fatture",
+          titolo: "Tutte le fatture",
+          elemento: <TutteLeFatture />,
+        },
         {
           chiave: "andamento",
           titolo: "Andamento mese",
@@ -66,7 +74,7 @@ export const AmministrazionePage = () => (
     base="/amministrazione"
     voci={[
       { chiave: "scadenze", titolo: "Scadenze", elemento: <Scadenze /> },
-      { chiave: "sezioni", titolo: "Sezioni A-H", elemento: <SezioniPage /> },
+      { chiave: "sezioni", titolo: "Sezioni A-L", elemento: <SezioniPage /> },
       {
         chiave: "decadi",
         titolo: "Decadi subagenti",
@@ -81,6 +89,11 @@ export const AmministrazionePage = () => (
         chiave: "broker",
         titolo: "Estratti broker",
         elemento: <EstrattiBroker />,
+      },
+      {
+        chiave: "condizioni",
+        titolo: "Chiedi alle condizioni",
+        elemento: <ChiediCondizioni />,
       },
     ]}
   />

@@ -82,7 +82,7 @@ describe("FiscaleBlocco", () => {
     await expect
       .element(
         screen.getByText(
-          /Obiettivo di Fabio 3\.000\s€ di utile\. .*fine 2030 è 3\.300\s€: per arrivarci servono circa 300\s€ di costi deducibili in più \(costi di prova\)\. È una stima\./,
+          /Obiettivo di Fabio 3\.000\s€ di utile fiscale\. .*fine 2030 è 3\.300\s€: per arrivarci servono circa 300\s€ di costi deducibili in più \(costi di prova\)\. È una stima\./,
         ),
       )
       .toBeVisible();

@@ -33,6 +33,10 @@ interface DatiDecade {
   subagente: string;
   stato: string;
   mail_di_fabio: string | null;
+  /** 18/11/2026: the decade mail is prepared by Lorenzo, no longer by Fabio (same value as mail_di_fabio) */
+  mail_della_decade?: string | null;
+  /** "Bozza pronta in fattureagenzia dal <data>" when the morning run has created the draft */
+  bozza?: string | null;
   contabile: { data: string } | null;
 }
 
@@ -48,8 +52,58 @@ interface CifreDecade {
     data: string | null;
     importo: number | null;
     atteso: number | null;
+    differenza?: number | null;
   } | null;
+  /** computation from BusinessObjects (piano unico 18/11/2026, P4) */
+  bo?: {
+    voci: Record<string, number>;
+    con_file: boolean;
+    finestra: [string, string];
+    dati_al: string;
+  };
+  confronto?: Record<
+    string,
+    { calcolato: number; mail: number; differenza: number; esito: string }
+  >;
 }
+
+const NOMI_VOCI: Record<string, string> = {
+  provv_decade: "provvigioni decade",
+  provv_sdd: "SDD",
+  provv_carta: "carta A/R",
+  provv_creditech: "CREDITECH",
+  provv_pos: "POS direzione",
+  provv_management: "management",
+  provv_integrazione: "integrazione",
+  contributo_direzione: "contributo direzione",
+  totale: "totale",
+  ritenuta: "ritenuta",
+  incassi: "incassi",
+  contributo_incassi: "contributo sugli incassi",
+  bonifico: "bonifico",
+  contanti: "contanti",
+  assegni: "assegni",
+};
+
+/** Comparison of the BO computation with the mail that was sent: how many items match, which ones do not. */
+const Confronto = ({ c }: { c: NonNullable<CifreDecade["confronto"]> }) => {
+  const voci = Object.entries(c);
+  const diverse = voci.filter(([, v]) => v.esito === "diversa");
+  const uguali = voci.length - diverse.length;
+  return (
+    <div className="text-muted-foreground tabular-nums">
+      Calcolo da BO contro la mail: {uguali} voci su {voci.length} uguali
+      {diverse.length > 0 && (
+        <span className="text-red-700">
+          {"; diverse: "}
+          {diverse
+            .map(([k, v]) => `${NOMI_VOCI[k] ?? k} ${euro(v.differenza)}`)
+            .join(", ")}
+        </span>
+      )}
+    </div>
+  );
+};
 
 const useCifreDecadi = (isSocio: boolean) =>
   useQuery({
@@ -90,7 +144,7 @@ const SchedaDecade = ({ r, cifre }: SchedaDecadeProps) => {
           {euro(d.calcolato.provv_decade)}
           {d.differenza &&
             (Math.abs(d.differenza.provv_decade) < 0.01
-              ? ", uguale alla mail di Fabio"
+              ? ", uguale alla mail della decade"
               : `, differenza con la mail ${euro(d.differenza.provv_decade)}`)}
         </div>
       )}
@@ -101,10 +155,27 @@ const SchedaDecade = ({ r, cifre }: SchedaDecadeProps) => {
           Versato {euro(d.versamento.importo)}
           {d.versamento.atteso != null &&
             (d.versamento.stato === "diverso"
-              ? `, atteso ${euro(d.versamento.atteso)} (bonifico della mail di Fabio)`
-              : ", uguale alla mail di Fabio")}
+              ? `, atteso ${euro(d.versamento.atteso)} (bonifico della mail della decade)`
+              : ", uguale alla mail della decade")}
+          {/* Fabio 18/11/2026: under 1 euro it is right, the difference stays visible in grey */}
+          {d.versamento.stato === "versato" && d.versamento.differenza ? (
+            <span className="text-muted-foreground">
+              {" "}
+              (differenza di {euro(d.versamento.differenza)})
+            </span>
+          ) : null}
         </div>
       )}
+      {d.confronto && Object.keys(d.confronto).length > 0 && (
+        <Confronto c={d.confronto} />
+      )}
+      {d.bo && !d.bo.con_file && (
+        <div className="text-muted-foreground">
+          Mancano i file della decade: contributo sugli incassi e integrazioni
+          restano da completare.
+        </div>
+      )}
+      {d.bozza && <div className="font-medium text-pa-verde">{d.bozza}</div>}
       {d.testo && <TestoCopia testo={d.testo} />}
       <FattoNota r={r} />
     </div>

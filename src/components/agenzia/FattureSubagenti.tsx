@@ -137,7 +137,14 @@ export const SchedaFattura = ({
           {cifre.differenze?.imponibile != null &&
             Math.abs(cifre.differenze.imponibile) >= 0.01 &&
             cifre.atteso.completo && (
-              <span className="text-red-700">
+              // Fabio 18/11/2026: under 1 euro it is a small error, shown in grey, not in red
+              <span
+                className={
+                  Math.abs(cifre.differenze.imponibile) < SOGLIA_EURO
+                    ? "text-muted-foreground"
+                    : "text-red-700"
+                }
+              >
                 , differenza {euro(cifre.differenze.imponibile)}
               </span>
             )}
@@ -154,6 +161,9 @@ export const SchedaFattura = ({
     </div>
   );
 };
+
+/** Differences under this amount are right (Fabio, 18/11/2026); same as fonti.SOGLIA_EURO in the agent. */
+const SOGLIA_EURO = 1;
 
 /** Amministrazione > Fatture subagenti (piano 16/11/2026, fase 8): one row per sub-agent and month, three checks. */
 export const FattureSubagenti = () => {

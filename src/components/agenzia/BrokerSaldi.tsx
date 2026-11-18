@@ -41,8 +41,9 @@ export const BrokerSaldi = () => {
       <ul className="mt-2 space-y-1 tabular-nums">
         {mesi.flatMap((m) =>
           q.data.mesi[m].righe.map((r) => {
-            const uguale =
-              r.differenza != null && Math.abs(r.differenza) < 0.01;
+            // Fabio 18/11/2026: under 1 euro it counts as equal; the cents stay written in grey
+            const uguale = r.differenza != null && Math.abs(r.differenza) < 1;
+            const centesimi = uguale && Math.abs(r.differenza ?? 0) >= 0.01;
             return (
               <li key={`${m}-${r.broker}`} className="border-t pt-1">
                 <span className="font-medium">
@@ -57,7 +58,7 @@ export const BrokerSaldi = () => {
                   {r.uscita_saldi == null
                     ? `Nel foglio Saldi di ${nomeMese(r.mese_saldi)} non c'è ancora.`
                     : uguale
-                      ? `Uguale al foglio Saldi di ${nomeMese(r.mese_saldi)}.`
+                      ? `Uguale al foglio Saldi di ${nomeMese(r.mese_saldi)}${centesimi ? ` (differenza di ${euro(r.differenza)})` : ""}.`
                       : `Foglio Saldi di ${nomeMese(r.mese_saldi)}: ${euro(r.uscita_saldi)}, differenza ${euro(r.differenza)}.`}
                 </span>
               </li>

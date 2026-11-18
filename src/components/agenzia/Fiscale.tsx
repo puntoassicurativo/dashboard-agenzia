@@ -48,6 +48,22 @@ export type Fiscale = {
   obiettivo?: number;
   obiettivo_come?: string;
   costi_mancanti?: number | null;
+  /** Fabio 18/11/2026: costs still to be recorded (Tombolato, cars), with what has already been paid. */
+  costi_previsti?: {
+    voci: {
+      voce: string;
+      importo: number;
+      fonte: string;
+      pagato: number;
+      resta: number;
+    }[];
+    totale: number;
+    nota: string;
+  };
+  utile_fiscale_con_previsti?: number | null;
+  /** positive = above the target */
+  sopra_obiettivo?: number | null;
+  anno_dopo_nota?: string;
   mesi_senza_ritenuta?: string[];
   da_confermare: string[];
   ipotesi: string[];

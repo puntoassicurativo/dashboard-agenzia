@@ -33,6 +33,12 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-pa-blu: var(--pa-blu);
+  --color-pa-blu-chiaro: var(--pa-blu-chiaro);
+  --color-pa-verde: var(--pa-verde);
+  --color-pa-verde-chiaro: var(--pa-verde-chiaro);
+  --color-pa-rosso: var(--pa-rosso);
+  --color-pa-rosso-chiaro: var(--pa-rosso-chiaro);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -44,24 +50,31 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  /* Style 2 "Punto Assicurativo" (chosen by Fabio on 18/11/2026): colours of the logo. Change them here only. */
+  --pa-blu: #1f3864;
+  --pa-blu-chiaro: #e8edf5;
+  --pa-verde: #3aa619;
+  --pa-verde-chiaro: #e6f4e0;
+  --pa-rosso: #c62828;
+  --pa-rosso-chiaro: #fdeaea;
+  --radius: 0.75rem;
+  --background: #f4f6fa;
+  --foreground: #1b2433;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --primary: var(--pa-blu);
+  --primary-foreground: #ffffff;
+  --secondary: #ffffff;
+  --secondary-foreground: var(--pa-blu);
+  --muted: #eef1f6;
+  --muted-foreground: #5b6575;
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --border: #e1e6ee;
+  --input: #d6dce6;
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);

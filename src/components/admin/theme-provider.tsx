@@ -27,6 +27,10 @@ export function ThemeProvider({
 
     root.classList.remove("light", "dark");
 
+    // Agency dashboard: only the light style 2 exists (Lorenzo, 18/11/2026: no dark version)
+    root.classList.add("light");
+    if (root.classList.contains("light")) return;
+
     if (theme === "system") {
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
         .matches

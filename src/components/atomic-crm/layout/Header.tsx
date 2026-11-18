@@ -1,125 +1,48 @@
 import { FileText, Import, Settings, User, Users } from "lucide-react";
 import { CanAccess, useTranslate, useUserMenu } from "ra-core";
-import { Link, matchPath, useLocation } from "react-router";
+import { Link } from "react-router";
 import { RefreshButton } from "@/components/admin/refresh-button";
-import { ThemeModeToggle } from "@/components/admin/theme-mode-toggle";
 import { UserMenu } from "@/components/admin/user-menu";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { ImportPage } from "../misc/ImportPage";
 import { ChangelogPage } from "../misc/ChangelogPage";
-import { useAccessoUtile } from "../../agenzia/Andamento";
 
 const Header = () => {
-  const { darkModeLogo, lightModeLogo, title } = useConfigurationContext();
-  const location = useLocation();
-  const { data: vedeUtile } = useAccessoUtile();
-
-  let currentPath: string | boolean = "/";
-  if (matchPath("/", location.pathname)) {
-    currentPath = "/";
-  } else if (
-    matchPath("/sezioni/*", location.pathname) ||
-    matchPath("/amministrazione/*", location.pathname)
-  ) {
-    currentPath = "/amministrazione";
-  } else if (
-    matchPath("/andamento", location.pathname) ||
-    matchPath("/contabilita/*", location.pathname)
-  ) {
-    currentPath = "/contabilita";
-  } else {
-    currentPath = false;
-  }
-
+  const { lightModeLogo, title } = useConfigurationContext();
   return (
-    <>
-      <nav className="grow">
-        <header className="bg-secondary">
-          <div className="px-4">
-            <div className="flex justify-between items-center flex-1">
-              <Link
-                to="/"
-                className="flex items-center gap-2 text-secondary-foreground no-underline"
-              >
-                <img
-                  className="[.light_&]:hidden h-6"
-                  src={darkModeLogo}
-                  alt={title}
-                />
-                <img
-                  className="[.dark_&]:hidden h-6"
-                  src={lightModeLogo}
-                  alt={title}
-                />
-                <h1 className="text-xl font-semibold">{title}</h1>
-              </Link>
-              <div>
-                <nav className="flex">
-                  {/* Dashboard di agenzia: al posto di Contacts, Companies, Deals */}
-                  <NavigationTab
-                    label="Cruscotto"
-                    to="/"
-                    isActive={currentPath === "/"}
-                  />
-                  {vedeUtile && (
-                    <NavigationTab
-                      label="Contabilità"
-                      to="/contabilita"
-                      isActive={currentPath === "/contabilita"}
-                    />
-                  )}
-                  <NavigationTab
-                    label="Amministrazione"
-                    to="/amministrazione"
-                    isActive={currentPath === "/amministrazione"}
-                  />
-                </nav>
-              </div>
-              <div className="flex items-center">
-                <ThemeModeToggle />
-                <RefreshButton />
-                <UserMenu>
-                  <ProfileMenu />
-                  <CanAccess resource="sales" action="list">
-                    <UsersMenu />
-                  </CanAccess>
-                  <CanAccess resource="configuration" action="edit">
-                    <SettingsMenu />
-                  </CanAccess>
-                  <ImportFromJsonMenuItem />
-                  <ChangelogMenuItem />
-                </UserMenu>
-              </div>
-            </div>
-          </div>
-        </header>
-      </nav>
-    </>
+    <header className="sticky top-0 z-40 h-16 bg-white border-b border-border">
+      <div className="h-full px-6 flex items-center justify-between">
+        <Link
+          to="/"
+          className="flex items-center gap-3 no-underline text-pa-blu"
+        >
+          <img
+            className="h-11 w-auto"
+            src={lightModeLogo}
+            alt="Punto Assicurativo"
+          />
+          <h1 className="text-xl font-semibold">{title}</h1>
+        </Link>
+        <div className="flex items-center gap-1">
+          <RefreshButton />
+          <UserMenu>
+            <ProfileMenu />
+            <CanAccess resource="sales" action="list">
+              <UsersMenu />
+            </CanAccess>
+            <CanAccess resource="configuration" action="edit">
+              <SettingsMenu />
+            </CanAccess>
+            <ImportFromJsonMenuItem />
+            <ChangelogMenuItem />
+          </UserMenu>
+        </div>
+      </div>
+    </header>
   );
 };
-
-const NavigationTab = ({
-  label,
-  to,
-  isActive,
-}: {
-  label: string;
-  to: string;
-  isActive: boolean;
-}) => (
-  <Link
-    to={to}
-    className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${
-      isActive
-        ? "text-secondary-foreground border-secondary-foreground"
-        : "text-secondary-foreground/70 border-transparent hover:text-secondary-foreground/80"
-    }`}
-  >
-    {label}
-  </Link>
-);
 
 const UsersMenu = () => {
   const translate = useTranslate();

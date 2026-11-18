@@ -8,9 +8,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
+import { useBlocchi } from "./datiLati";
 import { ErroreCaricamento } from "./ErroreCaricamento";
 import { useBloccoFiscale } from "./Fiscale";
 import { Sezione } from "./Sezione";
+import { Spark } from "./Spark";
 
 type Delta = {
   np: number;
@@ -66,8 +68,18 @@ type Riga = {
 };
 
 const MESI = [
-  "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
-  "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre",
+  "gennaio",
+  "febbraio",
+  "marzo",
+  "aprile",
+  "maggio",
+  "giugno",
+  "luglio",
+  "agosto",
+  "settembre",
+  "ottobre",
+  "novembre",
+  "dicembre",
 ];
 const MESI_BREVI = MESI.map((m) => m.slice(0, 3));
 
@@ -82,11 +94,22 @@ const euro = (v: number | null | undefined, decimali = 0) =>
         maximumFractionDigits: decimali,
         useGrouping: "always",
       } as unknown as Intl.NumberFormatOptions);
-const polizze = (n: number) => `${n >= 0 ? "+" : ""}${n} ${Math.abs(n) === 1 ? "polizza" : "polizze"}`;
+const polizze = (n: number) =>
+  `${n >= 0 ? "+" : ""}${n} ${Math.abs(n) === 1 ? "polizza" : "polizze"}`;
 const euroSegno = (v: number) => (v > 0 ? "+" : "") + euro(v);
+const pctSegno = (v: number | null) =>
+  v == null
+    ? "n.d."
+    : `${v >= 0 ? "+" : ""}${v.toLocaleString("it-IT", { maximumFractionDigits: 1 })}%`;
 const dataIt = (iso: string | null) =>
-  iso ? new Date(iso + "T12:00:00").toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" }) : "";
-const nomeMese = (aaaa_mm: string) => MESI[parseInt(aaaa_mm.slice(5, 7), 10) - 1];
+  iso
+    ? new Date(iso + "T12:00:00").toLocaleDateString("it-IT", {
+        day: "2-digit",
+        month: "2-digit",
+      })
+    : "";
+const nomeMese = (aaaa_mm: string) =>
+  MESI[parseInt(aaaa_mm.slice(5, 7), 10) - 1];
 
 export const useCruscotto = () =>
   useQuery({
@@ -102,67 +125,153 @@ export const useCruscotto = () =>
     },
   });
 
-/** Variazione con freccia e parola, mai solo colore. */
+/** Variazione con freccia e parola, mai solo colore (style 2: in a small pill). */
 const Variazione = ({ pct, testo }: { pct: number | null; testo: string }) => {
-  if (pct == null) return <span className="text-muted-foreground">{testo}: n.d.</span>;
+  if (pct == null)
+    return <span className="text-muted-foreground">{testo}: n.d.</span>;
   const su = pct >= 0;
   return (
-    <span className={su ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}>
+    <span
+      className={`self-start rounded-full px-2.5 py-0.5 font-medium ${
+        su
+          ? "bg-pa-verde-chiaro text-pa-verde"
+          : "bg-pa-rosso-chiaro text-pa-rosso"
+      }`}
+    >
       {su ? "▲" : "▼"} {su ? "+" : ""}
       {pct.toLocaleString("it-IT", { maximumFractionDigits: 1 })}% {testo}
     </span>
   );
 };
 
+type Colore = "verde" | "blu" | "rosso";
+const RIGA: Record<Colore, string> = {
+  verde: "border-l-pa-verde",
+  blu: "border-l-pa-blu",
+  rosso: "border-l-pa-rosso",
+};
+
+/** Card of style 2: coloured line on the left (green grows, red goes badly, blue neutral) and the small chart. */
 const Riquadro = ({
   titolo,
   valore,
+  colore = "blu",
+  serie,
+  etichettaSerie,
   children,
 }: {
   titolo: string;
   valore: string;
+  colore?: Colore;
+  serie?: number[];
+  etichettaSerie?: string;
   children?: React.ReactNode;
 }) => (
-  <div className="rounded-lg border bg-card p-4 flex flex-col gap-1 min-w-0">
+  <div
+    className={`rounded-2xl border border-l-4 ${RIGA[colore]} bg-card p-3.5 sm:p-5 flex flex-col gap-1 min-w-0 shadow-sm`}
+  >
     <div className="text-sm text-muted-foreground">{titolo}</div>
-    <div className="text-3xl font-semibold tabular-nums tracking-tight">{valore}</div>
-    <div className="text-sm flex flex-col gap-0.5 tabular-nums">{children}</div>
+    <div className="text-xl sm:text-3xl font-bold tabular-nums tracking-tight text-foreground">
+      {valore}
+    </div>
+    <div className="text-xs sm:text-sm flex flex-col gap-1 tabular-nums">
+      {children}
+    </div>
+    {serie && <Spark valori={serie} etichetta={etichettaSerie ?? titolo} />}
   </div>
 );
 
-const RiquadroDelta = ({ titolo, d, mese }: { titolo: string; d: DeltaLinea; mese: string }) => (
-  <Riquadro titolo={titolo} valore={euroSegno(d.ytd.delta)}>
-    <span className="text-muted-foreground">
-      da inizio anno, {polizze(d.ytd.delta_pezzi)} ({d.ytd.np_pezzi} nuove, {d.ytd.ann_pezzi} perse)
+const RiquadroDelta = ({
+  titolo,
+  d,
+  mese,
+}: {
+  titolo: string;
+  d: DeltaLinea;
+  mese: string;
+}) => (
+  <Riquadro
+    titolo={titolo}
+    valore={euroSegno(d.ytd.delta)}
+    colore={d.ytd.delta >= 0 ? "verde" : "rosso"}
+  >
+    <span
+      className={`self-start rounded-full px-2.5 py-0.5 font-medium ${
+        d.ytd.delta_pezzi >= 0
+          ? "bg-pa-verde-chiaro text-pa-verde"
+          : "bg-pa-rosso-chiaro text-pa-rosso"
+      }`}
+    >
+      {d.ytd.delta_pezzi >= 0 ? "▲" : "▼"} {polizze(d.ytd.delta_pezzi)}
+    </span>
+    <span className="text-muted-foreground hidden sm:block">
+      da inizio anno: {d.ytd.np_pezzi} nuove, {d.ytd.ann_pezzi} perse
     </span>
     <span className="text-muted-foreground">
-      anno scorso {euroSegno(d.ytd_ap.delta)}, {polizze(d.ytd_ap.delta_pezzi)}
+      anno scorso {euroSegno(d.ytd_ap.delta)}
     </span>
-    <span>
+    <span className="text-muted-foreground hidden sm:block">
       {nomeMese(mese)} {euroSegno(d.mese.delta)}, {polizze(d.mese.delta_pezzi)}
     </span>
   </Riquadro>
 );
+
+/** Bar towards Fabio's target: how much of the costs still needed the costs he expects (Tombolato, cars) cover. */
+const BarraObiettivo = ({
+  previsti,
+  mancanti,
+}: {
+  previsti: number;
+  mancanti: number;
+}) => {
+  const quota = mancanti > 0 ? Math.min(1, previsti / mancanti) : 1;
+  return (
+    <div className="mt-2">
+      <div
+        className="h-2.5 w-full rounded-full bg-muted overflow-hidden"
+        role="img"
+        aria-label={`costi previsti ${Math.round(quota * 100)}% di quelli che servono`}
+      >
+        <div
+          className="h-full rounded-full bg-pa-verde"
+          style={{ width: `${quota * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+};
 
 const GraficoMesi = ({ mesi }: { mesi: Mese[] }) => {
   const [tabella, setTabella] = useState(false);
   const scuro = document.documentElement.classList.contains("dark");
   const colori = scuro ? ["#3987e5", "#d95926"] : ["#2a78d6", "#eb6834"];
   const dati = mesi.map((m) => ({
-    mese: MESI_BREVI[parseInt(m.mese.slice(5, 7), 10) - 1] + (m.parziale ? "*" : ""),
+    mese:
+      MESI_BREVI[parseInt(m.mese.slice(5, 7), 10) - 1] +
+      (m.parziale ? "*" : ""),
     Auto: Math.round(m.incassi_auto),
     RE: Math.round(m.incassi_re),
   }));
   return (
     <div className="rounded-lg border bg-card p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
-        <h2 className="text-base font-semibold">Incassi per mese, ultimi 12 mesi</h2>
+        <h2 className="text-base font-semibold">
+          Incassi per mese, ultimi 12 mesi
+        </h2>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: colori[0] }} /> Auto
+            <span
+              className="inline-block w-3 h-3 rounded-sm"
+              style={{ background: colori[0] }}
+            />{" "}
+            Auto
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: colori[1] }} /> RE
+            <span
+              className="inline-block w-3 h-3 rounded-sm"
+              style={{ background: colori[1] }}
+            />{" "}
+            RE
           </span>
         </div>
       </div>
@@ -199,7 +308,9 @@ const GraficoMesi = ({ mesi }: { mesi: Mese[] }) => {
         />
       </div>
       <div className="mt-1 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-        <span>* mese in corso, fino a ieri. Fonte titoli incassati (NA013).</span>
+        <span>
+          * mese in corso, fino a ieri. Fonte titoli incassati (NA013).
+        </span>
         <button className="underline" onClick={() => setTabella(!tabella)}>
           {tabella ? "Nascondi tabella" : "Mostra tabella"}
         </button>
@@ -236,8 +347,13 @@ const GraficoMesi = ({ mesi }: { mesi: Mese[] }) => {
 const ComeLeggere = () => (
   <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground flex flex-col gap-1">
     <div className="text-foreground font-medium">Come leggere</div>
-    <span>Delta = nuova produzione meno annullamenti, in premio imponibile.</span>
-    <span>Auto e RE come nella mail di Vittoria: gli infortuni del conducente stanno nel RE.</span>
+    <span>
+      Delta = nuova produzione meno annullamenti, in premio imponibile.
+    </span>
+    <span>
+      Auto e RE come nella mail di Vittoria: gli infortuni del conducente stanno
+      nel RE.
+    </span>
     <span>Confronti sullo stesso periodo dell'anno scorso.</span>
   </div>
 );
@@ -246,33 +362,70 @@ export const Cruscotto = () => {
   const { data, isPending, error } = useCruscotto();
   // partners only: the fiscale block is protected by RLS, for everyone else it is empty and the tile is not shown
   const fiscale = useBloccoFiscale();
+  const saldi = useBlocchi<{ saldo_conto_premi: number | null }, unknown>(
+    "saldi",
+  );
   const fp = fiscale.data?.proiezione;
   const obiettivo =
     fiscale.data && fp
       ? {
           previsto: fp.utile_fiscale,
           obiettivo: fiscale.data.obiettivo ?? fiscale.data.soglia,
-          mancanti: fiscale.data.costi_mancanti ?? fp.utile_fiscale - (fiscale.data.obiettivo ?? fiscale.data.soglia),
+          mancanti:
+            fiscale.data.costi_mancanti ??
+            fp.utile_fiscale - (fiscale.data.obiettivo ?? fiscale.data.soglia),
+          previsti: fiscale.data.costi_previsti?.totale ?? null,
+          conPrevisti: fiscale.data.utile_fiscale_con_previsti ?? null,
+          sopra: fiscale.data.sopra_obiettivo ?? null,
         }
       : null;
-  if (isPending) return <div className="p-4 text-muted-foreground">Carico i dati...</div>;
+  if (isPending)
+    return <div className="p-4 text-muted-foreground">Carico i dati...</div>;
   if (error) return <ErroreCaricamento errore={error} />;
-  if (!data) return <div className="p-4 text-muted-foreground">Nessun dato ancora: l'agente non ha ancora girato.</div>;
+  if (!data)
+    return (
+      <div className="p-4 text-muted-foreground">
+        Nessun dato ancora: l'agente non ha ancora girato.
+      </div>
+    );
 
   const v = data.valori;
   const p = v.provvigioni;
   const inc = v.incassi;
   const anno = data.data_dati.slice(0, 4);
   const aggiornato = new Date(data.aggiornato_il).toLocaleString("it-IT", {
-    day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
   });
+  // small charts: only real monthly series (provvigioni and incassi from the cruscotto row, saldo and utile fiscale
+  // from the partners' blocks); delta auto and RE have no monthly series yet, so no chart there
+  const mesi = data.mensile ?? [];
+  const serieProvv = mesi.map((m) => m.provvigioni);
+  let cumulo = 0;
+  const serieIncassi = mesi
+    .filter((m) => m.mese.startsWith(anno))
+    .map((m) => (cumulo += m.incassi_auto + m.incassi_re));
+  const serieSaldo = Object.entries(saldi.data?.mesi ?? {})
+    .slice(-12)
+    .map(([, x]) => x.saldo_conto_premi)
+    .filter((x): x is number => x != null);
+  let cumuloF = 0;
+  const serieFiscale = Object.entries(fiscale.data?.per_mese ?? {})
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, x]) => (cumuloF += x.utile_fiscale));
 
   return (
-    <div className="flex flex-col gap-4 max-w-5xl mx-auto w-full px-4 pt-2 pb-28 md:px-0 md:pt-0 md:pb-8">
+    <div className="flex flex-col gap-4 max-w-6xl mx-auto w-full px-4 pt-4 pb-28 md:px-0 md:pt-0 md:pb-8">
       <div className="flex flex-wrap items-baseline justify-between gap-1">
-        <h1 className="text-xl font-semibold">Agenzia 346 Imperia Sanremo</h1>
-        <div className="text-sm text-muted-foreground">
-          Dati a {dataIt(data.data_dati)}, aggiornati il {aggiornato}
+        <h1 className="text-2xl font-semibold text-pa-blu">Imperia Sanremo</h1>
+        <div className="text-sm text-muted-foreground flex items-center gap-2">
+          <span
+            className="inline-block w-2 h-2 rounded-full bg-pa-verde"
+            aria-hidden
+          />
+          Dati al {dataIt(data.data_dati)}, aggiornati il {aggiornato}
         </div>
       </div>
 
@@ -282,34 +435,62 @@ export const Cruscotto = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Riquadro titolo={`Provvigioni di ${nomeMese(p.mese)}`} valore={euro(p.valore)}>
-          <Variazione pct={p.cresc} testo={`su ${nomeMese(p.mese)} ${parseInt(anno) - 1} (${euro(p.ap)})`} />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <Riquadro
+          titolo={`Provvigioni di ${nomeMese(p.mese)}`}
+          valore={euro(p.valore)}
+          colore={p.cresc == null || p.cresc >= 0 ? "verde" : "rosso"}
+          serie={serieProvv}
+          etichettaSerie="Provvigioni degli ultimi 12 mesi"
+        >
+          <Variazione
+            pct={p.cresc}
+            testo={`su ${nomeMese(p.mese).slice(0, 3)} ${parseInt(anno) - 1}`}
+          />
+          <span className="text-muted-foreground hidden sm:block">
+            {nomeMese(p.mese)} {parseInt(anno) - 1}: {euro(p.ap)}
+          </span>
           {p.ultimo_mese_chiuso && (
             <span className="text-muted-foreground">
-              {nomeMese(p.ultimo_mese_chiuso.mese)} chiuso {euro(p.ultimo_mese_chiuso.totale)}
+              {nomeMese(p.ultimo_mese_chiuso.mese)} chiuso{" "}
+              {euro(p.ultimo_mese_chiuso.totale)}
             </span>
           )}
         </Riquadro>
 
-        <Riquadro titolo="Avanzo" valore={euro(v.avanzo.valore)}>
-          <span className="text-muted-foreground">
-            ultimo movimento {dataIt(v.avanzo.data)}, {v.avanzo.descrizione}
-          </span>
+        <Riquadro
+          titolo="Avanzo del conto premi"
+          valore={euro(v.avanzo.valore)}
+          colore={v.avanzo.valore < 0 ? "rosso" : "blu"}
+          serie={serieSaldo.length > 1 ? serieSaldo : undefined}
+          etichettaSerie="Saldo del conto premi a fine mese, ultimi 12 mesi"
+        >
           {v.avanzo.prec_valore != null && (
-            <span className="text-muted-foreground">
+            <span className="text-muted-foreground font-medium">
               il {dataIt(v.avanzo.prec_data)} era {euro(v.avanzo.prec_valore)}
             </span>
           )}
+          <span className="text-muted-foreground">
+            ultimo movimento {dataIt(v.avanzo.data)}
+            {v.avanzo.descrizione ? `, ${v.avanzo.descrizione}` : ""}
+          </span>
         </Riquadro>
 
-        <Riquadro titolo={`Incassi da inizio ${anno}`} valore={euro(inc.totale)}>
-          <Variazione pct={inc.cresc_totale} testo="sull'anno scorso" />
-          <span>
-            Auto {euro(inc.auto)} <Variazione pct={inc.cresc_auto} testo="" />
+        <Riquadro
+          titolo={`Incassi da inizio ${anno}`}
+          valore={euro(inc.totale)}
+          serie={serieIncassi}
+          etichettaSerie={`Incassi progressivi del ${anno}`}
+        >
+          <Variazione
+            pct={inc.cresc_totale}
+            testo={`sul ${parseInt(anno) - 1}`}
+          />
+          <span className="text-muted-foreground">
+            auto {pctSegno(inc.cresc_auto)}, RE {pctSegno(inc.cresc_re)}
           </span>
-          <span>
-            RE {euro(inc.re)} <Variazione pct={inc.cresc_re} testo="" />
+          <span className="text-muted-foreground hidden sm:block">
+            auto {euro(inc.auto)}, RE {euro(inc.re)}
           </span>
         </Riquadro>
 
@@ -317,12 +498,35 @@ export const Cruscotto = () => {
         <RiquadroDelta titolo="Delta RE" d={v.delta_re} mese={p.mese} />
 
         {obiettivo ? (
-          <Riquadro titolo="Utile fiscale previsto a fine anno" valore={euro(obiettivo.previsto)}>
+          <Riquadro
+            titolo="Utile fiscale previsto"
+            valore={euro(obiettivo.previsto)}
+            serie={serieFiscale.length > 1 ? serieFiscale : undefined}
+            etichettaSerie="Utile fiscale da gennaio, mese per mese"
+          >
+            <span className="font-semibold text-foreground">
+              obiettivo {euro(obiettivo.obiettivo)}
+            </span>
             <span className="text-muted-foreground">
               {obiettivo.mancanti > 0
-                ? `obiettivo ${euro(obiettivo.obiettivo)}: mancano circa ${euro(obiettivo.mancanti)} di costi`
-                : `obiettivo ${euro(obiettivo.obiettivo)} raggiunto`}
+                ? `mancano ${euro(obiettivo.mancanti)} di costi`
+                : "obiettivo raggiunto"}
             </span>
+            {obiettivo.conPrevisti != null && obiettivo.previsti != null && (
+              <>
+                <span className="text-muted-foreground">
+                  coi costi previsti da Fabio {euro(obiettivo.conPrevisti)}
+                  {obiettivo.sopra != null &&
+                    (obiettivo.sopra >= 0
+                      ? ` (+${euro(obiettivo.sopra)})`
+                      : ` (mancano ${euro(-obiettivo.sopra)})`)}
+                </span>
+                <BarraObiettivo
+                  previsti={obiettivo.previsti}
+                  mancanti={obiettivo.mancanti}
+                />
+              </>
+            )}
           </Riquadro>
         ) : (
           <ComeLeggere />
@@ -335,7 +539,11 @@ export const Cruscotto = () => {
         </Sezione>
       )}
       {data.mensile && (
-        <Sezione id="cruscotto.mesi" titolo="Incassi e provvigioni mese per mese" riassunto={`${data.mensile.length} mesi`}>
+        <Sezione
+          id="cruscotto.mesi"
+          titolo="Incassi e provvigioni mese per mese"
+          riassunto={`${data.mensile.length} mesi`}
+        >
           <GraficoMesi mesi={data.mensile} />
         </Sezione>
       )}

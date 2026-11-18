@@ -51,7 +51,8 @@ describe("MeseCruscotto", () => {
     await expect
       .element(screen.getByText(/Provvigioni di novembre fino al 17/))
       .toBeVisible();
-    await expect.element(screen.getByText(/▼ -200 € sul 2029/)).toBeVisible();
+    // Intl puts a non-breaking space before the euro sign: \s matches it.
+    await expect.element(screen.getByText(/▼ -200\s€ sul 2029/)).toBeVisible();
   });
 
   it("lists the months newest first in the picker", async () => {

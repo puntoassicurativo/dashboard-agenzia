@@ -9,6 +9,12 @@ interface Pacchetto {
   file: string;
   conti: Record<string, { movimenti: number; entrate: number; uscite: number }>;
   fatture: number;
+  mutui_interessi?: {
+    mutuo: string;
+    nome: string;
+    interessi_mese: number;
+    interessi_anno: number;
+  }[];
 }
 
 const NOMI: Record<string, string> = {
@@ -61,6 +67,38 @@ export const PerLoStudio = () => {
               ))}
             </tbody>
           </table>
+          {(p.mutui_interessi ?? []).length > 0 && (
+            <>
+              <h3 className="pt-2 font-semibold">
+                Interessi dei mutui Banco Desio
+              </h3>
+              <p className="text-muted-foreground">
+                Da confrontare con la certificazione della banca.
+              </p>
+              <table className="w-full tabular-nums">
+                <thead className="text-muted-foreground text-left">
+                  <tr>
+                    <th className="font-normal">Mutuo</th>
+                    <th className="font-normal text-right">
+                      {nomeMese(p.mese)}
+                    </th>
+                    <th className="font-normal text-right">Da gennaio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(p.mutui_interessi ?? []).map((x) => (
+                    <tr key={x.mutuo} className="border-t">
+                      <td>
+                        {x.nome} (n. {x.mutuo})
+                      </td>
+                      <td className="text-right">{euro(x.interessi_mese)}</td>
+                      <td className="text-right">{euro(x.interessi_anno)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
         </div>
       ) : (
         <div className="rounded-lg border bg-card p-4 text-sm">

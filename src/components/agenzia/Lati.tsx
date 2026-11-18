@@ -8,6 +8,7 @@ import {
 import { FatturePagamenti } from "./FatturePagamenti";
 import { FattureSubagenti } from "./FattureSubagenti";
 import { Lato } from "./Lato";
+import { Mutui } from "./Mutui";
 import { PerLoStudio } from "./PerLoStudio";
 import { Personale } from "./Personale";
 import { Ritenute } from "./Ritenute";
@@ -44,6 +45,11 @@ export const ContabilitaPage = () => {
           elemento: <Personale />,
         },
         { chiave: "ritenute", titolo: "Ritenute", elemento: <Ritenute /> },
+        {
+          chiave: "mutui",
+          titolo: "Mutui e finanziamenti",
+          elemento: <Mutui />,
+        },
         {
           chiave: "studio",
           titolo: "Per lo studio",

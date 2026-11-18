@@ -51,6 +51,20 @@ export type Fiscale = {
   mesi_senza_ritenuta?: string[];
   da_confermare: string[];
   ipotesi: string[];
+  /** Banco Desio loans (18/11/2026): interest and charges of the year, next year from the plan. */
+  mutui?: {
+    da_gennaio: number;
+    resto_anno: number;
+    anno: number;
+    interessi_anno: number;
+    mesi_dal_piano: string[];
+    anno_dopo: {
+      anno: number;
+      interessi: number;
+      oneri: number;
+      capitale: number;
+    };
+  } | null;
 };
 
 const MESI = [
@@ -189,9 +203,18 @@ export const FiscaleBlocco = ({ f, mese }: { f: Fiscale; mese: string }) => {
             le decadi del mese dopo.
           </p>
         )}
+        {f.mutui && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Interessi e oneri dei mutui nel {f.anno}: {euro(f.mutui.anno)} (di
+            cui interessi {euro(f.mutui.interessi_anno)}); nel{" "}
+            {f.mutui.anno_dopo.anno} dal piano interessi{" "}
+            {euro(f.mutui.anno_dopo.interessi)} e oneri{" "}
+            {euro(f.mutui.anno_dopo.oneri)}.
+          </p>
+        )}
         {f.da_confermare.length > 0 && (
           <p className="mt-1 text-sm text-muted-foreground">
-            Da confermare con Mauro: {f.da_confermare.join(", ")}.
+            Da confermare con lo studio: {f.da_confermare.join(", ")}.
           </p>
         )}
         <ul className="mt-3 list-disc pl-5 text-sm text-muted-foreground space-y-1">

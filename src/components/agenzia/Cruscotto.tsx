@@ -11,8 +11,14 @@ import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
 import { useBlocchi } from "./datiLati";
 import { ErroreCaricamento } from "./ErroreCaricamento";
 import { useBloccoFiscale } from "./Fiscale";
+import {
+  ConfrontoMesi,
+  type MeseRiepilogo,
+  RiquadroProvvigioniMese,
+  ScegliMese,
+} from "./MeseCruscotto";
+import { euro, euroSegno, Riquadro, Variazione } from "./Riquadro";
 import { Sezione } from "./Sezione";
-import { Spark } from "./Spark";
 
 type Delta = {
   np: number;
@@ -51,6 +57,8 @@ type Valori = {
   };
   delta_auto: DeltaLinea;
   delta_re: DeltaLinea;
+  /** 18/11/2026: one entry per month of the year (month picker); older rows do not have it. */
+  mesi?: MeseRiepilogo[];
 };
 type Mese = {
   mese: string;
@@ -83,20 +91,8 @@ const MESI = [
 ];
 const MESI_BREVI = MESI.map((m) => m.slice(0, 3));
 
-// useGrouping "always": in italiano il browser non mette il punto sotto i 10.000 (2604 invece di 2.604)
-const euro = (v: number | null | undefined, decimali = 0) =>
-  v == null
-    ? "n.d."
-    : v.toLocaleString("it-IT", {
-        style: "currency",
-        currency: "EUR",
-        minimumFractionDigits: decimali,
-        maximumFractionDigits: decimali,
-        useGrouping: "always",
-      } as unknown as Intl.NumberFormatOptions);
 const polizze = (n: number) =>
   `${n >= 0 ? "+" : ""}${n} ${Math.abs(n) === 1 ? "polizza" : "polizze"}`;
-const euroSegno = (v: number) => (v > 0 ? "+" : "") + euro(v);
 const pctSegno = (v: number | null) =>
   v == null
     ? "n.d."
@@ -125,70 +121,17 @@ export const useCruscotto = () =>
     },
   });
 
-/** Variazione con freccia e parola, mai solo colore (style 2: in a small pill). */
-const Variazione = ({ pct, testo }: { pct: number | null; testo: string }) => {
-  if (pct == null)
-    return <span className="text-muted-foreground">{testo}: n.d.</span>;
-  const su = pct >= 0;
-  return (
-    <span
-      className={`self-start rounded-full px-2.5 py-0.5 font-medium ${
-        su
-          ? "bg-pa-verde-chiaro text-pa-verde"
-          : "bg-pa-rosso-chiaro text-pa-rosso"
-      }`}
-    >
-      {su ? "▲" : "▼"} {su ? "+" : ""}
-      {pct.toLocaleString("it-IT", { maximumFractionDigits: 1 })}% {testo}
-    </span>
-  );
-};
-
-type Colore = "verde" | "blu" | "rosso";
-const RIGA: Record<Colore, string> = {
-  verde: "border-l-pa-verde",
-  blu: "border-l-pa-blu",
-  rosso: "border-l-pa-rosso",
-};
-
-/** Card of style 2: coloured line on the left (green grows, red goes badly, blue neutral) and the small chart. */
-const Riquadro = ({
-  titolo,
-  valore,
-  colore = "blu",
-  serie,
-  etichettaSerie,
-  children,
-}: {
-  titolo: string;
-  valore: string;
-  colore?: Colore;
-  serie?: number[];
-  etichettaSerie?: string;
-  children?: React.ReactNode;
-}) => (
-  <div
-    className={`rounded-2xl border border-l-4 ${RIGA[colore]} bg-card p-3.5 sm:p-5 flex flex-col gap-1 min-w-0 shadow-sm`}
-  >
-    <div className="text-sm text-muted-foreground">{titolo}</div>
-    <div className="text-xl sm:text-3xl font-bold tabular-nums tracking-tight text-foreground">
-      {valore}
-    </div>
-    <div className="text-xs sm:text-sm flex flex-col gap-1 tabular-nums">
-      {children}
-    </div>
-    {serie && <Spark valori={serie} etichetta={etichettaSerie ?? titolo} />}
-  </div>
-);
-
 const RiquadroDelta = ({
   titolo,
   d,
   mese,
+  delMese,
 }: {
   titolo: string;
   d: DeltaLinea;
   mese: string;
+  /** delta of the month chosen with the picker (default: the running month) */
+  delMese: Delta;
 }) => (
   <Riquadro
     titolo={titolo}
@@ -211,7 +154,8 @@ const RiquadroDelta = ({
       anno scorso {euroSegno(d.ytd_ap.delta)}
     </span>
     <span className="text-muted-foreground hidden sm:block">
-      {nomeMese(mese)} {euroSegno(d.mese.delta)}, {polizze(d.mese.delta_pezzi)}
+      {nomeMese(mese)} {euroSegno(delMese.delta)},{" "}
+      {polizze(delMese.delta_pezzi)}
     </span>
   </Riquadro>
 );
@@ -358,8 +302,32 @@ const ComeLeggere = () => (
   </div>
 );
 
+/** Running month built from the old fields, for rows written before the month picker (18/11/2026). */
+const meseDaRiga = (r: Riga): MeseRiepilogo => {
+  const p = r.valori.provvigioni;
+  return {
+    mese: p.mese,
+    fino_al: r.data_dati,
+    parziale: true,
+    provv: p.valore,
+    provv_ap: p.ap,
+    differenza: Math.round((p.valore - p.ap) * 100) / 100,
+    cresc: p.cresc,
+    incassi_auto: 0,
+    incassi_re: 0,
+    incassi_auto_ap: 0,
+    incassi_re_ap: 0,
+    delta_auto: r.valori.delta_auto.mese,
+    delta_auto_ap: r.valori.delta_auto.mese_ap,
+    delta_re: r.valori.delta_re.mese,
+    delta_re_ap: r.valori.delta_re.mese_ap,
+  };
+};
+
 export const Cruscotto = () => {
   const { data, isPending, error } = useCruscotto();
+  const [scelto, setScelto] = useState<string | null>(null);
+  const [confronto, setConfronto] = useState<[string, string]>(["", ""]);
   // partners only: the fiscale block is protected by RLS, for everyone else it is empty and the tile is not shown
   const fiscale = useBloccoFiscale();
   const saldi = useBlocchi<{ saldo_conto_premi: number | null }, unknown>(
@@ -390,7 +358,9 @@ export const Cruscotto = () => {
     );
 
   const v = data.valori;
-  const p = v.provvigioni;
+  const mesiAnno = v.mesi?.length ? v.mesi : [meseDaRiga(data)];
+  const m =
+    mesiAnno.find((x) => x.mese === scelto) ?? mesiAnno[mesiAnno.length - 1];
   const inc = v.incassi;
   const anno = data.data_dati.slice(0, 4);
   const aggiornato = new Date(data.aggiornato_il).toLocaleString("it-IT", {
@@ -420,6 +390,9 @@ export const Cruscotto = () => {
     <div className="flex flex-col gap-4 max-w-6xl mx-auto w-full px-4 pt-4 pb-28 md:px-0 md:pt-0 md:pb-8">
       <div className="flex flex-wrap items-baseline justify-between gap-1">
         <h1 className="text-2xl font-semibold text-pa-blu">Imperia Sanremo</h1>
+        {mesiAnno.length > 1 && (
+          <ScegliMese mesi={mesiAnno} scelto={m.mese} onScegli={setScelto} />
+        )}
         <div className="text-sm text-muted-foreground flex items-center gap-2">
           <span
             className="inline-block w-2 h-2 rounded-full bg-pa-verde"
@@ -436,32 +409,13 @@ export const Cruscotto = () => {
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        <Riquadro
-          titolo={`Provvigioni di ${nomeMese(p.mese)}`}
-          valore={euro(p.valore)}
-          colore={p.cresc == null || p.cresc >= 0 ? "verde" : "rosso"}
-          serie={serieProvv}
-          etichettaSerie="Provvigioni degli ultimi 12 mesi"
-        >
-          <Variazione
-            pct={p.cresc}
-            testo={`su ${nomeMese(p.mese).slice(0, 3)} ${parseInt(anno) - 1}`}
-          />
-          <span className="text-muted-foreground hidden sm:block">
-            {nomeMese(p.mese)} {parseInt(anno) - 1}: {euro(p.ap)}
-          </span>
-          {p.ultimo_mese_chiuso && (
-            <span className="text-muted-foreground">
-              {nomeMese(p.ultimo_mese_chiuso.mese)} chiuso{" "}
-              {euro(p.ultimo_mese_chiuso.totale)}
-            </span>
-          )}
-        </Riquadro>
+        <RiquadroProvvigioniMese m={m} serie={serieProvv} />
 
         <Riquadro
           titolo="Avanzo del conto premi"
           valore={euro(v.avanzo.valore)}
-          colore={v.avanzo.valore < 0 ? "rosso" : "blu"}
+          colore={v.avanzo.valore < 0 ? "rosso" : "verde"}
+          coloraValore
           serie={serieSaldo.length > 1 ? serieSaldo : undefined}
           etichettaSerie="Saldo del conto premi a fine mese, ultimi 12 mesi"
         >
@@ -494,8 +448,18 @@ export const Cruscotto = () => {
           </span>
         </Riquadro>
 
-        <RiquadroDelta titolo="Delta auto" d={v.delta_auto} mese={p.mese} />
-        <RiquadroDelta titolo="Delta RE" d={v.delta_re} mese={p.mese} />
+        <RiquadroDelta
+          titolo="Delta auto"
+          d={v.delta_auto}
+          mese={m.mese}
+          delMese={m.delta_auto}
+        />
+        <RiquadroDelta
+          titolo="Delta RE"
+          d={v.delta_re}
+          mese={m.mese}
+          delMese={m.delta_re}
+        />
 
         {obiettivo ? (
           <Riquadro
@@ -536,6 +500,19 @@ export const Cruscotto = () => {
       {obiettivo && (
         <Sezione id="cruscotto.come-leggere" titolo="Come leggere">
           <ComeLeggere />
+        </Sezione>
+      )}
+      {mesiAnno.length > 1 && (
+        <Sezione id="cruscotto.confronto" titolo="Confronta due mesi">
+          <ConfrontoMesi
+            mesi={mesiAnno}
+            primo={confronto[0] || m.mese}
+            secondo={
+              confronto[1] || mesiAnno[Math.max(0, mesiAnno.length - 2)].mese
+            }
+            onPrimo={(x) => setConfronto([x, confronto[1]])}
+            onSecondo={(x) => setConfronto([confronto[0], x])}
+          />
         </Sezione>
       )}
       {data.mensile && (

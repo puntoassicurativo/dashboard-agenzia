@@ -10,6 +10,7 @@ import { FattureSubagenti } from "./FattureSubagenti";
 import { Lato } from "./Lato";
 import { Mutui } from "./Mutui";
 import { PerLoStudio } from "./PerLoStudio";
+import { SimulaTassePagina } from "./SimulaTassePagina";
 import { Personale } from "./Personale";
 import { Ritenute } from "./Ritenute";
 import { SezioniPage } from "./Sezioni";
@@ -62,6 +63,12 @@ export const ContabilitaPage = () => {
           chiave: "studio",
           titolo: "Per lo studio",
           elemento: <PerLoStudio />,
+        },
+        // Fabio 18/11/2026: the tax simulator next to Per lo studio, in a clearer page of its own
+        {
+          chiave: "simula-tasse",
+          titolo: "Simula tasse",
+          elemento: <SimulaTassePagina />,
         },
       ]}
     />

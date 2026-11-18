@@ -7,7 +7,6 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
-import { SimulaTasse } from "./SimulaTasse";
 
 type Colonna = {
   provvigioni: number;
@@ -239,10 +238,10 @@ export const FiscaleBlocco = ({ f, mese }: { f: Fiscale; mese: string }) => {
           ))}
         </ul>
       </div>
-      <SimulaTasse
-        defaultProfit={pr?.utile_fiscale ?? dg.utile_fiscale}
-        defaultWithheld={pr?.ritenute ?? dg.ritenute}
-      />
+      {/* 18/11/2026: the simulator moved to its own page next to Per lo studio (Fabio) */}
+      <p className="text-sm text-muted-foreground">
+        Per provare altri numeri: Contabilità, Simula tasse.
+      </p>
     </div>
   );
 };

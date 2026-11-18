@@ -1,4 +1,5 @@
 import { Commercialista } from "./Commercialista";
+import { DomandeStudio } from "./DomandeStudio";
 import { useBlocchi } from "./datiLati";
 import { ErroreCaricamento } from "./ErroreCaricamento";
 import { euro, nomeMese } from "./formato";
@@ -37,6 +38,7 @@ export const PerLoStudio = () => {
       titolo="Per lo studio"
       sotto="Ogni mese lo studio chiede le banche del mese. Il pacchetto lo prepara il giro della mattina sul PC di Lorenzo; lo mandano Lorenzo o Fabio."
     >
+      <DomandeStudio />
       {p ? (
         <div className="rounded-lg border bg-card p-4 text-sm space-y-2">
           <h2 className="text-base font-semibold">

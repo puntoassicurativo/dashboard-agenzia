@@ -187,4 +187,26 @@ describe("Fatture", () => {
       .element(screen.getByText("Broker Uno"))
       .not.toBeInTheDocument();
   });
+
+  it("searches a supplier across the months and gives its total", async () => {
+    const screen = await pagina("/fatture?cerca=laigu");
+    await expect.element(screen.getByText("1 di 5")).toBeVisible();
+    await expect
+      .element(screen.getByText(/1 fattura con "laigu", totale/))
+      .toBeVisible();
+    await expect
+      .element(screen.getByText("Prova", { exact: true }))
+      .not.toBeInTheDocument();
+  });
+
+  it("a bill without its direct debit yet is waiting, not unpaid", () => {
+    const tutte = unisciFatture({
+      sub: {},
+      broker: {},
+      cassetto: {},
+      bollette: BOLLETTE,
+    });
+    expect(tutte[0].stato).toBe("da arrivare");
+    expect(tutte[0].pagata).toBe("addebito non ancora arrivato");
+  });
 });

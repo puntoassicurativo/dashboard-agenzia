@@ -31,7 +31,7 @@ const Pillola = ({ valore, testo }: { valore: number; testo: string }) => {
   );
 };
 
-const RiquadroArea = ({
+export const RiquadroArea = ({
   area,
   info,
   mese,

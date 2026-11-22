@@ -189,7 +189,13 @@ export const Spiegato = ({ spiega, children, className }: SpiegatoProps) => {
   const n = spiega.elenco?.righe.length ?? 0;
 
   return (
-    <>
+    // the panel and the list are portals but their React events bubble up here: stop them, so a number inside a
+    // clickable tile (main page) opens its explanation without also opening the tile's page
+    <span
+      className="contents"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
       <Popover open={aperta} onOpenChange={setAperta}>
         <PopoverTrigger asChild>
           <button
@@ -277,6 +283,6 @@ export const Spiegato = ({ spiega, children, className }: SpiegatoProps) => {
           </SheetContent>
         </Sheet>
       )}
-    </>
+    </span>
   );
 };

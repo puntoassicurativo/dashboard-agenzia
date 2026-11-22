@@ -316,11 +316,12 @@ const daBolletta = (b: Bolletta, i: number): Fattura => ({
   dettaglio: "bolletta della luce",
   importo: b.importo,
   ritenuta: null,
-  stato: b.pagata_il ? "pagata" : "da pagare",
-  pagata: b.pagata_il ? dataIt(b.pagata_il) : b.stato,
+  // 22/11/2026: a bill whose direct debit is not in the bank statement yet is not unpaid: grey, not red
+  stato: b.pagata_il ? "pagata" : "da arrivare",
+  pagata: b.pagata_il ? dataIt(b.pagata_il) : "addebito non ancora arrivato",
   spiega: {
     titolo: `${b.fornitore}, bolletta del ${dataIt(b.data)}`,
-    cosa: "La mail della bolletta non ha l'importo: importo e data vengono dall'addebito sul conto gestionale. Il costo e' gia' nell'utile (Utenze e telefonia).",
+    cosa: `La mail della bolletta non ha l'importo: importo e data vengono dall'addebito sul conto gestionale. Il costo e' gia' nell'utile (Utenze e telefonia).${b.pagata_il ? "" : " L'addebito non e' ancora nell'estratto conto: compare quando arriva l'estratto nuovo."}`,
     calcolo: [
       {
         voce: b.pagata_il
@@ -414,16 +415,62 @@ export const perMese = (righe: Fattura[]): MeseFatture[] => {
   });
 };
 
+const normale = (s: string): string =>
+  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
 export const filtra = (
   righe: Fattura[],
   tipo: Tipo | "tutte",
   stato: Stato | "tutti",
-): Fattura[] =>
-  righe.filter(
+  cerca = "",
+): Fattura[] => {
+  const testo = normale(cerca.trim());
+  return righe.filter(
     (r) =>
       (tipo === "tutte" || r.tipo === tipo) &&
-      (stato === "tutti" || r.stato === stato),
+      (stato === "tutti" || r.stato === stato) &&
+      (!testo || normale(`${r.fornitore} ${r.dettaglio}`).includes(testo)),
   );
+};
+
+/** 22/11/2026: searching a supplier, its invoices of every month with the total (e.g. "Marradi"). */
+export const spiegaRicerca = (righe: Fattura[], cerca: string): Spiegazione => {
+  const totale = tondo(righe.reduce((s, r) => s + (r.importo ?? 0), 0));
+  const ritenute = tondo(righe.reduce((s, r) => s + (r.ritenuta ?? 0), 0));
+  const mesi = [...new Set(righe.map((r) => r.mese))].sort().reverse();
+  return {
+    titolo: `Fatture con "${cerca.trim()}"`,
+    cosa: "Somma degli importi delle fatture trovate, di tutti i mesi che la dashboard conosce.",
+    calcolo: [
+      ...mesi.map(
+        (m): RigaCalcolo => ({
+          voce: nomeMese(m),
+          valore: tondo(
+            righe
+              .filter((r) => r.mese === m)
+              .reduce((s, r) => s + (r.importo ?? 0), 0),
+          ),
+          segno: "+",
+        }),
+      ),
+      { voce: "Totale", valore: totale, segno: "=" },
+      { voce: "di cui ritenute", valore: ritenute },
+    ],
+    fonte:
+      "posta di fattureagenzia, foglio Saldi, cassetto fiscale, estratti conto",
+    elenco: {
+      titolo: `Fatture con "${cerca.trim()}"`,
+      colonne: ["Fattura", "Importo", "Ritenuta", "Stato"],
+      righe: righe.map((r) => [
+        `${dataIt(r.data)} ${r.fornitore}, ${r.dettaglio}`,
+        r.importo,
+        r.ritenuta,
+        r.stato,
+      ]),
+      totale: ["Totale", totale, ritenute, ""],
+    },
+  };
+};
 
 export const testoImporto = (r: Fattura): string =>
   r.importo != null ? euro(r.importo) : "n.d.";

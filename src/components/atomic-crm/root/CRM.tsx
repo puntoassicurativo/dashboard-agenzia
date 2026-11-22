@@ -30,6 +30,7 @@ import { SezioniPage, SezionePage } from "../../agenzia/Sezioni";
 import { AndamentoPage } from "../../agenzia/Andamento";
 import { AmministrazionePage, ContabilitaPage } from "../../agenzia/Lati";
 import { Fatture } from "../../agenzia/Fatture";
+import { CruscottoDettaglio } from "../../agenzia/CruscottoDettaglio";
 import {
   getAuthProvider as defaultAuthProviderBuilder,
   getDataProvider as defaultDataProviderBuilder,
@@ -266,6 +267,7 @@ const DesktopAdmin = (
         <Route path="/sezioni/:lettera" element={<SezionePage />} />
         <Route path="/andamento" element={<AndamentoPage />} />
         <Route path="/fatture" element={<Fatture />} />
+        <Route path="/cruscotto/:voce" element={<CruscottoDettaglio />} />
         <Route path="/contabilita" element={<ContabilitaPage />} />
         <Route path="/contabilita/:voce" element={<ContabilitaPage />} />
         <Route path="/amministrazione" element={<AmministrazionePage />} />
@@ -368,6 +370,7 @@ const MobileAdmin = (
           <Route path="/sezioni/:lettera" element={<SezionePage />} />
           <Route path="/andamento" element={<AndamentoPage />} />
           <Route path="/fatture" element={<Fatture />} />
+          <Route path="/cruscotto/:voce" element={<CruscottoDettaglio />} />
           <Route path="/contabilita" element={<ContabilitaPage />} />
           <Route path="/contabilita/:voce" element={<ContabilitaPage />} />
           <Route path="/amministrazione" element={<AmministrazionePage />} />

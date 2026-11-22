@@ -28,7 +28,10 @@ export const MobileNavigation = () => {
   const { data: vedeUtile } = useAccessoUtile();
 
   let currentPath: string | boolean = "/";
-  if (matchPath("/", location.pathname)) {
+  if (
+    matchPath("/", location.pathname) ||
+    matchPath("/cruscotto/*", location.pathname)
+  ) {
     currentPath = "/";
   } else if (matchPath("/fatture", location.pathname)) {
     currentPath = "/fatture";
@@ -75,8 +78,14 @@ export const MobileNavigation = () => {
     >
       <div className="flex justify-center">
         <>
-          {/* Agency dashboard: Fatture (partners, first entry since 22/11/2026), Cruscotto, Contabilita' (partners),
+          {/* Agency dashboard: Cruscotto, Fatture (partners, since 22/11/2026), Contabilita' (partners),
               Amministrazione, Impostazioni */}
+          <NavigationButton
+            href="/"
+            Icon={Home}
+            label="Cruscotto"
+            isActive={currentPath === "/"}
+          />
           {vedeUtile && (
             <NavigationButton
               href="/fatture"
@@ -85,12 +94,6 @@ export const MobileNavigation = () => {
               isActive={currentPath === "/fatture"}
             />
           )}
-          <NavigationButton
-            href="/"
-            Icon={Home}
-            label="Cruscotto"
-            isActive={currentPath === "/"}
-          />
           {vedeUtile && (
             <NavigationButton
               href="/contabilita"

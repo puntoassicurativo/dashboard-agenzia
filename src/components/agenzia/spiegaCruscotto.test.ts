@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import type { MeseRiepilogo } from "./MeseCruscotto";
 import type { Cella, Spiegazione } from "./Spiega";
 import {
+  elencoPassi,
   type Incassi,
+  type PassiProiezione,
+  spiegaAvanzo,
   spiegaDeltaYtd,
   spiegaIncassi,
   spiegaProvv,
@@ -187,5 +190,94 @@ describe("explanations of the main page", () => {
     expect(s.elenco?.righe).toHaveLength(3);
     expect(s.elenco?.totale).toEqual(["Totale", 450, 80]);
     expect(s.elenco?.nota).toBe("Totale dei prodotti = numero del riquadro.");
+  });
+
+  it("surplus: balance before + entries - exits = today's balance, and a sheet typo is said", () => {
+    const av = {
+      valore: -50,
+      data: "2030-02-09",
+      prec_valore: 100,
+      prec_data: "2030-01-09",
+    };
+    const mv = {
+      dal_saldo: 100,
+      dal: "2030-01-09",
+      al: "2030-02-09",
+      entrate: 30,
+      uscite: 180,
+      al_saldo: -50,
+      differenza: 0,
+      quadra: true,
+      movimenti: [
+        {
+          data: "2030-01-20",
+          descrizione: "a",
+          entrata: 30,
+          uscita: 0,
+          saldo: 130,
+        },
+        {
+          data: "2030-02-09",
+          descrizione: "b",
+          entrata: 0,
+          uscita: 180,
+          saldo: -50,
+        },
+      ],
+    };
+    const s = spiegaAvanzo(av, [], mv);
+    const c = s.calcolo ?? [];
+    expect(
+      (c[0].valore as number) +
+        (c[1].valore as number) -
+        (c[2].valore as number),
+    ).toBe(c[3].valore);
+    expect(s.elenco?.righe).toHaveLength(3);
+    const storto = spiegaAvanzo(av, [], {
+      ...mv,
+      quadra: false,
+      differenza: -10,
+    });
+    expect(storto.elenco?.nota).toMatch(/refuso/);
+  });
+
+  it("projection steps: each column ends on the projected figure", () => {
+    const p: PassiProiezione = {
+      mesi: 10,
+      ricavi: {
+        da_gennaio: 1200,
+        arag: 60,
+        una_tantum: 150,
+        di_cui_incentivi_marzo: 50,
+        ricorrenti: 990,
+        al_mese: 99,
+        per_12: 1188,
+        arag_anno: 120,
+        totale: 1458,
+      },
+      deducibili: {
+        da_gennaio: 700,
+        mutui_pagati: 30,
+        una_tantum: 40,
+        ricorrenti: 630,
+        al_mese: 63,
+        per_12: 756,
+        mutui_resto_anno: 9,
+        totale: 835,
+      },
+    };
+    const righe = elencoPassi(p, "2030-01", "2030-10").righe;
+    const valore = (testo: string, col: number) =>
+      righe.find((r) => String(r[0]).startsWith(testo))?.[col] as number;
+    const ricavi = ["per 12", "piu' voci una tantum", "piu' ARAG"].reduce(
+      (s, t) => s + (valore(t, 1) ?? 0),
+      0,
+    );
+    expect(ricavi).toBe(valore("= previsto", 1));
+    const deducibili = ["per 12", "piu' voci una tantum", "piu' mutui"].reduce(
+      (s, t) => s + (valore(t, 2) ?? 0),
+      0,
+    );
+    expect(deducibili).toBe(valore("= previsto", 2));
   });
 });

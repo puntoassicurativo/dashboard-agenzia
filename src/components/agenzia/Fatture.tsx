@@ -18,6 +18,7 @@ import {
   type FatturaCassetto,
   type FatturaSub,
   filtra,
+  spiegaRicerca,
   perMese,
   type Stato,
   STATI,
@@ -173,6 +174,7 @@ export const Fatture = () => {
   const [parametri, setParametri] = useSearchParams();
   const tipo = (parametri.get("tipo") ?? "tutte") as Tipo | "tutte";
   const stato = (parametri.get("stato") ?? "tutti") as Stato | "tutti";
+  const cerca = parametri.get("cerca") ?? "";
   const cambia = (chiave: string, valore: string, base: string) => {
     const p = new URLSearchParams(parametri);
     if (valore === base) p.delete(chiave);
@@ -200,9 +202,10 @@ export const Fatture = () => {
     cassetto: cassetto.data?.mesi ?? {},
     bollette: bollette.data?.info?.bollette ?? [],
   });
-  const righe = filtra(tutte, tipo, stato);
+  const righe = filtra(tutte, tipo, stato, cerca);
   const mesi = perMese(righe);
   const infoCassetto = cassetto.data?.info;
+  const filtrate = tipo !== "tutte" || stato !== "tutti" || cerca.trim() !== "";
   return (
     <div className="pt-4 md:pt-0">
       <Pagina
@@ -228,12 +231,39 @@ export const Fatture = () => {
             ]}
             onChange={(v) => cambia("stato", v, "tutti")}
           />
-          {(tipo !== "tutte" || stato !== "tutti") && (
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Cerca</span>
+            <input
+              type="search"
+              className="w-44 rounded-md border bg-card px-2 py-1 text-sm"
+              placeholder="fornitore, es. Marradi"
+              value={cerca}
+              onChange={(e) => cambia("cerca", e.target.value, "")}
+            />
+          </label>
+          {filtrate && (
             <span className="text-sm text-muted-foreground">
               {righe.length} di {tutte.length}
             </span>
           )}
         </div>
+
+        {cerca.trim() !== "" && righe.length > 0 && (
+          <div className="rounded-2xl border border-l-4 border-l-pa-blu bg-card p-4 text-sm">
+            {righe.length} {righe.length === 1 ? "fattura" : "fatture"} con "
+            {cerca.trim()}", totale{" "}
+            <Spiegato
+              spiega={spiegaRicerca(righe, cerca)}
+              className="font-semibold"
+            >
+              {euro(
+                Math.round(
+                  righe.reduce((s, r) => s + (r.importo ?? 0), 0) * 100,
+                ) / 100,
+              )}
+            </Spiegato>
+          </div>
+        )}
 
         {mesi.length === 0 && (
           <div className="rounded-lg border bg-card p-4 text-sm">

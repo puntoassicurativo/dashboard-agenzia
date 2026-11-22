@@ -16,6 +16,7 @@ import {
   spiegaMancano,
   spiegaProvv,
   spiegaProvvAp,
+  spiegaQuota,
 } from "./spiegaCruscotto";
 
 /** Wraps a number in its explanation when there is one. */
@@ -152,8 +153,8 @@ const AncoraDaFare = ({ m }: { m: MeseRiepilogo }) => {
         />
       </div>
       <span className="text-muted-foreground">
-        {Math.round(quota * 100)}% fatto, giorno {giorno(m.fino_al)} di{" "}
-        {giorniDelMese(m.mese)}
+        <Forse spiega={spiegaQuota(m)}>{Math.round(quota * 100)}% fatto</Forse>,
+        giorno {giorno(m.fino_al)} di {giorniDelMese(m.mese)}
       </span>
     </div>
   );
@@ -182,7 +183,7 @@ export const RiquadroProvvigioniMese = ({
     <span className="text-muted-foreground">
       {periodoAnnoPrima(m)}:{" "}
       <Spiegato spiega={spiegaProvvAp(m)}>{euro(m.provv_ap)}</Spiegato> (
-      {pct(m.cresc)})
+      <Spiegato spiega={spiegaDifferenzaProvv(m)}>{pct(m.cresc)}</Spiegato>)
     </span>
     {m.parziale && <AncoraDaFare m={m} />}
   </Riquadro>

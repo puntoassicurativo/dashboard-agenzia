@@ -14,14 +14,18 @@ const GRUPPI: { titolo: string; voci: VoceMenu[] }[] = [
   {
     titolo: "Agenzia",
     voci: [
-      // Lorenzo 22/11/2026: the invoices are the very first entry, on their own
+      // Lorenzo 22/11/2026 (night): the dashboard opens on the Cruscotto, first entry; Fatture right after, on its own
+      {
+        titolo: "Cruscotto",
+        to: "/",
+        attiva: (p) => p === "/" || !!matchPath("/cruscotto/*", p),
+      },
       {
         titolo: "Fatture",
         to: "/fatture",
         soloSoci: true,
         attiva: (p) => p === "/fatture",
       },
-      { titolo: "Cruscotto", to: "/", attiva: (p) => p === "/" },
       {
         titolo: "Contabilità",
         to: "/contabilita",

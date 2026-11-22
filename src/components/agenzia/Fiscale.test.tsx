@@ -67,7 +67,7 @@ describe("FiscaleBlocco", () => {
       .element(screen.getByText(/la dà Mauro con la dichiarazione/))
       .toBeVisible();
     await expect
-      .element(screen.getByText("Simula le tasse con il tuo utile"))
+      .element(screen.getByText(/Per provare altri numeri: Contabilità/))
       .toBeVisible();
   });
 

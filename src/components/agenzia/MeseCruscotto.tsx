@@ -6,6 +6,26 @@
  * months whole against whole. The total of the previous month is no longer shown (Fabio: not interesting).
  */
 import { euro, euroSegno, Riquadro } from "./Riquadro";
+import { type Spiegazione, Spiegato } from "./Spiega";
+import {
+  nomeMese,
+  periodoAnnoPrima,
+  spiegaDeltaMese,
+  spiegaDifferenzaProvv,
+  spiegaIncassiMese,
+  spiegaMancano,
+  spiegaProvv,
+  spiegaProvvAp,
+} from "./spiegaCruscotto";
+
+/** Wraps a number in its explanation when there is one. */
+const Forse = ({
+  spiega,
+  children,
+}: {
+  spiega?: Spiegazione;
+  children: React.ReactNode;
+}) => (spiega ? <Spiegato spiega={spiega}>{children}</Spiegato> : children);
 
 type DeltaMese = {
   np: number;
@@ -34,37 +54,23 @@ export interface MeseRiepilogo {
   delta_auto_ap: DeltaMese;
   delta_re: DeltaMese;
   delta_re_ap: DeltaMese;
+  /** 22/11/2026: commissions of the month line by line (rows written before that day do not have them). */
+  provv_linee?: Record<string, LineaProvv>;
+  provv_linee_ap?: Record<string, LineaProvv>;
 }
+export interface LineaProvv {
+  provv: number;
+  titoli: number;
+}
+export type { DeltaMese };
 
-const MESI = [
-  "gennaio",
-  "febbraio",
-  "marzo",
-  "aprile",
-  "maggio",
-  "giugno",
-  "luglio",
-  "agosto",
-  "settembre",
-  "ottobre",
-  "novembre",
-  "dicembre",
-];
-export const nomeMese = (aaaaMm: string): string =>
-  MESI[parseInt(aaaaMm.slice(5, 7), 10) - 1];
+// month names live in spiegaCruscotto.ts (no import cycle with the explanations); re-exported for the other pages
+export { nomeMese, periodoAnnoPrima };
 const giorno = (iso: string): number => parseInt(iso.slice(8, 10), 10);
 const pct = (v: number | null): string =>
   v == null
     ? "n.d."
     : `${v >= 0 ? "+" : ""}${v.toLocaleString("it-IT", { maximumFractionDigits: 1 })}%`;
-
-/** "dal 1 al 17 novembre 2025" for the running month, "novembre 2025" for a closed one. */
-export const periodoAnnoPrima = (m: MeseRiepilogo): string => {
-  const annoPrima = parseInt(m.mese.slice(0, 4), 10) - 1;
-  return m.parziale
-    ? `dal 1 al ${giorno(m.fino_al)} ${nomeMese(m.mese)} ${annoPrima}`
-    : `${nomeMese(m.mese)} ${annoPrima}`;
-};
 
 export interface ScegliMeseProps {
   mesi: MeseRiepilogo[];
@@ -91,7 +97,15 @@ export const ScegliMese = ({ mesi, scelto, onScegli }: ScegliMeseProps) => (
 );
 
 /** Difference in euro in a pill, with arrow and word (never colour alone). */
-const Differenza = ({ valore, testo }: { valore: number; testo: string }) => {
+const Differenza = ({
+  valore,
+  testo,
+  spiega,
+}: {
+  valore: number;
+  testo: string;
+  spiega?: Spiegazione;
+}) => {
   const su = valore >= 0;
   return (
     <span
@@ -101,7 +115,8 @@ const Differenza = ({ valore, testo }: { valore: number; testo: string }) => {
           : "bg-pa-rosso-chiaro text-pa-rosso"
       }`}
     >
-      {su ? "▲" : "▼"} {euroSegno(valore)} {testo}
+      {su ? "▲" : "▼"} <Forse spiega={spiega}>{euroSegno(valore)}</Forse>{" "}
+      {testo}
     </span>
   );
 };
@@ -123,9 +138,8 @@ const AncoraDaFare = ({ m }: { m: MeseRiepilogo }) => {
     <div className="mt-1 flex flex-col gap-1">
       <span className="font-semibold text-foreground">
         {nomeMese(m.mese)} {annoPrima} intero {euro(m.provv_ap_mese)}
-        {m.mancano > 0
-          ? `: mancano ${euro(m.mancano)}`
-          : `: superato di ${euro(-m.mancano)}`}
+        {m.mancano > 0 ? ": mancano " : ": superato di "}
+        <Forse spiega={spiegaMancano(m)}>{euro(Math.abs(m.mancano))}</Forse>
       </span>
       <div
         className="h-2.5 w-full rounded-full bg-muted overflow-hidden"
@@ -158,27 +172,47 @@ export const RiquadroProvvigioniMese = ({
     colore={m.differenza >= 0 ? "verde" : "rosso"}
     serie={serie}
     etichettaSerie="Provvigioni degli ultimi 12 mesi"
+    spiega={spiegaProvv(m)}
   >
     <Differenza
       valore={m.differenza}
       testo={`sul ${parseInt(m.mese.slice(0, 4), 10) - 1}`}
+      spiega={spiegaDifferenzaProvv(m)}
     />
     <span className="text-muted-foreground">
-      {periodoAnnoPrima(m)}: {euro(m.provv_ap)} ({pct(m.cresc)})
+      {periodoAnnoPrima(m)}:{" "}
+      <Spiegato spiega={spiegaProvvAp(m)}>{euro(m.provv_ap)}</Spiegato> (
+      {pct(m.cresc)})
     </span>
     {m.parziale && <AncoraDaFare m={m} />}
   </Riquadro>
 );
 
-type RigaConfronto = [string, (m: MeseRiepilogo) => string];
+type RigaConfronto = [
+  string,
+  (m: MeseRiepilogo) => string,
+  ((m: MeseRiepilogo) => Spiegazione)?,
+];
 const RIGHE_CONFRONTO: RigaConfronto[] = [
-  ["Provvigioni", (m) => euro(m.provv)],
-  ["Stesso periodo un anno prima", (m) => euro(m.provv_ap)],
-  ["Differenza", (m) => euroSegno(m.differenza)],
-  ["Incassi auto", (m) => euro(m.incassi_auto)],
-  ["Incassi RE", (m) => euro(m.incassi_re)],
-  ["Delta auto", (m) => euroSegno(m.delta_auto.delta)],
-  ["Delta RE", (m) => euroSegno(m.delta_re.delta)],
+  ["Provvigioni", (m) => euro(m.provv), spiegaProvv],
+  ["Stesso periodo un anno prima", (m) => euro(m.provv_ap), spiegaProvvAp],
+  ["Differenza", (m) => euroSegno(m.differenza), spiegaDifferenzaProvv],
+  [
+    "Incassi auto",
+    (m) => euro(m.incassi_auto),
+    (m) => spiegaIncassiMese(m, "auto"),
+  ],
+  ["Incassi RE", (m) => euro(m.incassi_re), (m) => spiegaIncassiMese(m, "re")],
+  [
+    "Delta auto",
+    (m) => euroSegno(m.delta_auto.delta),
+    (m) => spiegaDeltaMese("Delta auto", m, "delta_auto"),
+  ],
+  [
+    "Delta RE",
+    (m) => euroSegno(m.delta_re.delta),
+    (m) => spiegaDeltaMese("Delta RE", m, "delta_re"),
+  ],
 ];
 
 /** Two months side by side (proposed in the 18/11/2026 call): same figures, picked with two menus. */
@@ -216,11 +250,14 @@ export const ConfrontoMesi = ({
           </tr>
         </thead>
         <tbody>
-          {RIGHE_CONFRONTO.map(([nome, valore]) => (
+          {RIGHE_CONFRONTO.map(([nome, valore, spiega]) => (
             <tr key={nome} className="border-t">
               <td className="py-1.5 pr-2">{nome}</td>
-              <td className="py-1.5 pl-2 text-right">{valore(a)}</td>
-              <td className="py-1.5 pl-2 text-right">{valore(b)}</td>
+              {[a, b].map((m, i) => (
+                <td key={i} className="py-1.5 pl-2 text-right">
+                  <Forse spiega={spiega?.(m)}>{valore(m)}</Forse>
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>

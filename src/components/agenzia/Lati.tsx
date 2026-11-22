@@ -1,3 +1,5 @@
+import { Navigate, useParams } from "react-router";
+
 import { useAccessoUtile } from "./Andamento";
 import AndamentoPage from "./Andamento";
 import {
@@ -5,7 +7,6 @@ import {
   EstrattiBroker,
   Scadenze,
 } from "./AmministrazionePagine";
-import { FatturePagamenti } from "./FatturePagamenti";
 import { FattureSubagenti } from "./FattureSubagenti";
 import { Lato } from "./Lato";
 import { Mutui } from "./Mutui";
@@ -14,12 +15,17 @@ import { SimulaTassePagina } from "./SimulaTassePagina";
 import { Personale } from "./Personale";
 import { Ritenute } from "./Ritenute";
 import { SezioniPage } from "./Sezioni";
-import { TutteLeFatture } from "./TutteLeFatture";
 import { ChiediCondizioni } from "./ChiediCondizioni";
+
+/** Old addresses of the three invoice pages (P4 of the 21/11/2026 plan): they all open the one Fatture page. */
+const VECCHIE_FATTURE = ["tutte-le-fatture", "fatture"];
 
 /** Contabilita' (numbers, partners only: the data is protected by RLS, the menu entry is hidden too). */
 export const ContabilitaPage = () => {
   const accesso = useAccessoUtile();
+  const { voce } = useParams();
+  if (voce && VECCHIE_FATTURE.includes(voce))
+    return <Navigate to="/fatture" replace />;
   if (accesso.isPending)
     return <div className="p-4 text-muted-foreground">Carico...</div>;
   if (!accesso.data)
@@ -32,21 +38,11 @@ export const ContabilitaPage = () => {
     <Lato
       base="/contabilita"
       voci={[
-        // Fabio 17/11/2026 and decision 11 of Lorenzo (18/11/2026): Contabilita' opens on all the invoices
-        {
-          chiave: "tutte-le-fatture",
-          titolo: "Tutte le fatture",
-          elemento: <TutteLeFatture />,
-        },
+        // 22/11/2026: the invoices moved to their own page, first entry of the menu (/fatture)
         {
           chiave: "andamento",
           titolo: "Andamento mese",
           elemento: <AndamentoPage />,
-        },
-        {
-          chiave: "fatture",
-          titolo: "Fatture e pagamenti",
-          elemento: <FatturePagamenti />,
         },
         {
           chiave: "personale",
@@ -75,33 +71,44 @@ export const ContabilitaPage = () => {
   );
 };
 
-/** Amministrazione (things to do, everyone). */
-export const AmministrazionePage = () => (
-  <Lato
-    base="/amministrazione"
-    voci={[
-      { chiave: "scadenze", titolo: "Scadenze", elemento: <Scadenze /> },
-      { chiave: "sezioni", titolo: "Sezioni A-L", elemento: <SezioniPage /> },
-      {
-        chiave: "decadi",
-        titolo: "Decadi subagenti",
-        elemento: <DecadiSubagenti />,
-      },
-      {
-        chiave: "fatture-subagenti",
-        titolo: "Fatture subagenti",
-        elemento: <FattureSubagenti />,
-      },
-      {
-        chiave: "broker",
-        titolo: "Estratti broker",
-        elemento: <EstrattiBroker />,
-      },
-      {
-        chiave: "condizioni",
-        titolo: "Chiedi alle condizioni",
-        elemento: <ChiediCondizioni />,
-      },
-    ]}
-  />
-);
+/** Amministrazione (things to do, everyone). Partners find the sub-agents' invoices in Fatture; the others keep the
+ * page without amounts here. */
+export const AmministrazionePage = () => {
+  const { voce } = useParams();
+  const { data: socio } = useAccessoUtile();
+  if (socio && voce === "fatture-subagenti")
+    return <Navigate to="/fatture?tipo=subagenti" replace />;
+  return (
+    <Lato
+      base="/amministrazione"
+      voci={[
+        { chiave: "scadenze", titolo: "Scadenze", elemento: <Scadenze /> },
+        { chiave: "sezioni", titolo: "Sezioni A-L", elemento: <SezioniPage /> },
+        {
+          chiave: "decadi",
+          titolo: "Decadi subagenti",
+          elemento: <DecadiSubagenti />,
+        },
+        ...(socio
+          ? []
+          : [
+              {
+                chiave: "fatture-subagenti",
+                titolo: "Fatture subagenti",
+                elemento: <FattureSubagenti />,
+              },
+            ]),
+        {
+          chiave: "broker",
+          titolo: "Estratti broker",
+          elemento: <EstrattiBroker />,
+        },
+        {
+          chiave: "condizioni",
+          titolo: "Chiedi alle condizioni",
+          elemento: <ChiediCondizioni />,
+        },
+      ]}
+    />
+  );
+};

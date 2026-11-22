@@ -14,6 +14,13 @@ const GRUPPI: { titolo: string; voci: VoceMenu[] }[] = [
   {
     titolo: "Agenzia",
     voci: [
+      // Lorenzo 22/11/2026: the invoices are the very first entry, on their own
+      {
+        titolo: "Fatture",
+        to: "/fatture",
+        soloSoci: true,
+        attiva: (p) => p === "/fatture",
+      },
       { titolo: "Cruscotto", to: "/", attiva: (p) => p === "/" },
       {
         titolo: "Contabilità",

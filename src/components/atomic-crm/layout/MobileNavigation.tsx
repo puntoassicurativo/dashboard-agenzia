@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
+  FileText,
   Home,
   LayoutList,
   MoreHorizontal,
@@ -29,6 +30,8 @@ export const MobileNavigation = () => {
   let currentPath: string | boolean = "/";
   if (matchPath("/", location.pathname)) {
     currentPath = "/";
+  } else if (matchPath("/fatture", location.pathname)) {
+    currentPath = "/fatture";
   } else if (
     matchPath("/sezioni/*", location.pathname) ||
     matchPath("/amministrazione/*", location.pathname)
@@ -72,7 +75,16 @@ export const MobileNavigation = () => {
     >
       <div className="flex justify-center">
         <>
-          {/* Agency dashboard: Cruscotto, Contabilita' (partners), Amministrazione, Impostazioni */}
+          {/* Agency dashboard: Fatture (partners, first entry since 22/11/2026), Cruscotto, Contabilita' (partners),
+              Amministrazione, Impostazioni */}
+          {vedeUtile && (
+            <NavigationButton
+              href="/fatture"
+              Icon={FileText}
+              label="Fatture"
+              isActive={currentPath === "/fatture"}
+            />
+          )}
           <NavigationButton
             href="/"
             Icon={Home}

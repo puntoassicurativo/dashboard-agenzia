@@ -18,7 +18,23 @@ import {
   ScegliMese,
 } from "./MeseCruscotto";
 import { euro, euroSegno, Riquadro, Variazione } from "./Riquadro";
+import { RiquadriVita } from "./RiquadriVita";
 import { Sezione } from "./Sezione";
+import { Spiegato } from "./Spiega";
+import {
+  type FiscaleCruscotto,
+  type Incassi,
+  spiegaAvanzo,
+  spiegaConPrevisti,
+  spiegaCrescita,
+  spiegaDeltaAnnoPrima,
+  spiegaDeltaMese,
+  spiegaDeltaYtd,
+  spiegaIncassi,
+  spiegaObiettivo,
+  spiegaPolizze,
+  spiegaUtileFiscale,
+} from "./spiegaCruscotto";
 
 type Delta = {
   np: number;
@@ -44,17 +60,7 @@ type Valori = {
     prec_valore: number | null;
     prec_data: string | null;
   };
-  incassi: {
-    auto: number;
-    re: number;
-    totale: number;
-    auto_ap: number;
-    re_ap: number;
-    totale_ap: number;
-    cresc_auto: number | null;
-    cresc_re: number | null;
-    cresc_totale: number | null;
-  };
+  incassi: Incassi;
   delta_auto: DeltaLinea;
   delta_re: DeltaLinea;
   /** 18/11/2026: one entry per month of the year (month picker); older rows do not have it. */
@@ -124,41 +130,60 @@ export const useCruscotto = () =>
 const RiquadroDelta = ({
   titolo,
   d,
-  mese,
-  delMese,
+  m,
+  chiave,
+  mesi,
+  datiAl,
+  anno,
 }: {
   titolo: string;
   d: DeltaLinea;
-  mese: string;
-  /** delta of the month chosen with the picker (default: the running month) */
-  delMese: Delta;
-}) => (
-  <Riquadro
-    titolo={titolo}
-    valore={euroSegno(d.ytd.delta)}
-    colore={d.ytd.delta >= 0 ? "verde" : "rosso"}
-  >
-    <span
-      className={`self-start rounded-full px-2.5 py-0.5 font-medium ${
-        d.ytd.delta_pezzi >= 0
-          ? "bg-pa-verde-chiaro text-pa-verde"
-          : "bg-pa-rosso-chiaro text-pa-rosso"
-      }`}
+  /** month chosen with the picker (default: the running month) */
+  m: MeseRiepilogo;
+  chiave: "delta_auto" | "delta_re";
+  mesi: MeseRiepilogo[];
+  datiAl: string;
+  anno: number;
+}) => {
+  const delMese: Delta = m[chiave];
+  return (
+    <Riquadro
+      titolo={titolo}
+      valore={euroSegno(d.ytd.delta)}
+      colore={d.ytd.delta >= 0 ? "verde" : "rosso"}
+      spiega={spiegaDeltaYtd(titolo, d, mesi, chiave, datiAl)}
     >
-      {d.ytd.delta_pezzi >= 0 ? "▲" : "▼"} {polizze(d.ytd.delta_pezzi)}
-    </span>
-    <span className="text-muted-foreground hidden sm:block">
-      da inizio anno: {d.ytd.np_pezzi} nuove, {d.ytd.ann_pezzi} perse
-    </span>
-    <span className="text-muted-foreground">
-      anno scorso {euroSegno(d.ytd_ap.delta)}
-    </span>
-    <span className="text-muted-foreground hidden sm:block">
-      {nomeMese(mese)} {euroSegno(delMese.delta)},{" "}
-      {polizze(delMese.delta_pezzi)}
-    </span>
-  </Riquadro>
-);
+      <span
+        className={`self-start rounded-full px-2.5 py-0.5 font-medium ${
+          d.ytd.delta_pezzi >= 0
+            ? "bg-pa-verde-chiaro text-pa-verde"
+            : "bg-pa-rosso-chiaro text-pa-rosso"
+        }`}
+      >
+        {d.ytd.delta_pezzi >= 0 ? "▲" : "▼"}{" "}
+        <Spiegato spiega={spiegaPolizze(titolo, d.ytd)}>
+          {polizze(d.ytd.delta_pezzi)}
+        </Spiegato>
+      </span>
+      <span className="text-muted-foreground hidden sm:block">
+        da inizio anno: {d.ytd.np_pezzi} nuove, {d.ytd.ann_pezzi} perse
+      </span>
+      <span className="text-muted-foreground">
+        anno scorso{" "}
+        <Spiegato spiega={spiegaDeltaAnnoPrima(titolo, d, anno)}>
+          {euroSegno(d.ytd_ap.delta)}
+        </Spiegato>
+      </span>
+      <span className="text-muted-foreground hidden sm:block">
+        {nomeMese(m.mese)}{" "}
+        <Spiegato spiega={spiegaDeltaMese(titolo, m, chiave)}>
+          {euroSegno(delMese.delta)}
+        </Spiegato>
+        , {polizze(delMese.delta_pezzi)}
+      </span>
+    </Riquadro>
+  );
+};
 
 /** Bar towards Fabio's target: how much of the costs still needed the costs he expects (Tombolato, cars) cover. */
 const BarraObiettivo = ({
@@ -385,6 +410,21 @@ export const Cruscotto = () => {
   const serieFiscale = Object.entries(fiscale.data?.per_mese ?? {})
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([, x]) => (cumuloF += x.utile_fiscale));
+  const annoN = parseInt(anno, 10);
+  // the list behind the surplus: balance at the end of each month (partners only, from the Saldi blocks)
+  const saldiMese = Object.entries(saldi.data?.mesi ?? {})
+    .slice(-12)
+    .filter(
+      (x): x is [string, { saldo_conto_premi: number }] =>
+        x[1].saldo_conto_premi != null,
+    )
+    .map(([mese, x]): [string, number] => [mese, x.saldo_conto_premi]);
+  const fiscaleSpiega = fiscale.data?.proiezione
+    ? (fiscale.data as unknown as FiscaleCruscotto)
+    : null;
+  const conPrevisti = fiscaleSpiega
+    ? spiegaConPrevisti(fiscaleSpiega)
+    : undefined;
 
   return (
     <div className="flex flex-col gap-4 max-w-6xl mx-auto w-full px-4 pt-4 pb-28 md:px-0 md:pt-0 md:pb-8">
@@ -418,10 +458,14 @@ export const Cruscotto = () => {
           coloraValore
           serie={serieSaldo.length > 1 ? serieSaldo : undefined}
           etichettaSerie="Saldo del conto premi a fine mese, ultimi 12 mesi"
+          spiega={spiegaAvanzo(v.avanzo, saldiMese)}
         >
           {v.avanzo.prec_valore != null && (
             <span className="text-muted-foreground font-medium">
-              il {dataIt(v.avanzo.prec_data)} era {euro(v.avanzo.prec_valore)}
+              il {dataIt(v.avanzo.prec_data)} era{" "}
+              <Spiegato spiega={spiegaAvanzo(v.avanzo, saldiMese)}>
+                {euro(v.avanzo.prec_valore)}
+              </Spiegato>
             </span>
           )}
           <span className="text-muted-foreground">
@@ -435,51 +479,104 @@ export const Cruscotto = () => {
           valore={euro(inc.totale)}
           serie={serieIncassi}
           etichettaSerie={`Incassi progressivi del ${anno}`}
+          spiega={spiegaIncassi(inc, annoN, data.data_dati)}
         >
-          <Variazione
-            pct={inc.cresc_totale}
-            testo={`sul ${parseInt(anno) - 1}`}
-          />
+          <Variazione pct={inc.cresc_totale} testo={`sul ${annoN - 1}`} />
           <span className="text-muted-foreground">
-            auto {pctSegno(inc.cresc_auto)}, RE {pctSegno(inc.cresc_re)}
+            auto{" "}
+            <Spiegato
+              spiega={spiegaCrescita(
+                "Auto",
+                inc.auto,
+                inc.auto_ap,
+                inc.cresc_auto,
+                annoN,
+              )}
+            >
+              {pctSegno(inc.cresc_auto)}
+            </Spiegato>
+            , RE{" "}
+            <Spiegato
+              spiega={spiegaCrescita(
+                "RE",
+                inc.re,
+                inc.re_ap,
+                inc.cresc_re,
+                annoN,
+              )}
+            >
+              {pctSegno(inc.cresc_re)}
+            </Spiegato>
           </span>
           <span className="text-muted-foreground hidden sm:block">
-            auto {euro(inc.auto)}, RE {euro(inc.re)}
+            auto{" "}
+            <Spiegato spiega={spiegaIncassi(inc, annoN, data.data_dati)}>
+              {euro(inc.auto)}
+            </Spiegato>
+            , RE{" "}
+            <Spiegato spiega={spiegaIncassi(inc, annoN, data.data_dati)}>
+              {euro(inc.re)}
+            </Spiegato>
           </span>
         </Riquadro>
 
         <RiquadroDelta
           titolo="Delta auto"
           d={v.delta_auto}
-          mese={m.mese}
-          delMese={m.delta_auto}
+          m={m}
+          chiave="delta_auto"
+          mesi={mesiAnno}
+          datiAl={data.data_dati}
+          anno={annoN}
         />
         <RiquadroDelta
           titolo="Delta RE"
           d={v.delta_re}
-          mese={m.mese}
-          delMese={m.delta_re}
+          m={m}
+          chiave="delta_re"
+          mesi={mesiAnno}
+          datiAl={data.data_dati}
+          anno={annoN}
         />
 
-        {obiettivo ? (
+        {obiettivo && fiscaleSpiega ? (
           <Riquadro
             titolo="Utile fiscale previsto"
             valore={euro(obiettivo.previsto)}
             serie={serieFiscale.length > 1 ? serieFiscale : undefined}
             etichettaSerie="Utile fiscale da gennaio, mese per mese"
+            spiega={spiegaUtileFiscale(fiscaleSpiega)}
           >
             <span className="font-semibold text-foreground">
-              obiettivo {euro(obiettivo.obiettivo)}
+              obiettivo{" "}
+              <Spiegato spiega={spiegaObiettivo(fiscaleSpiega)}>
+                {euro(obiettivo.obiettivo)}
+              </Spiegato>
             </span>
             <span className="text-muted-foreground">
-              {obiettivo.mancanti > 0
-                ? `mancano ${euro(obiettivo.mancanti)} di costi`
-                : "obiettivo raggiunto"}
+              {obiettivo.mancanti > 0 ? (
+                <>
+                  mancano{" "}
+                  <Spiegato spiega={spiegaObiettivo(fiscaleSpiega)}>
+                    {euro(obiettivo.mancanti)}
+                  </Spiegato>{" "}
+                  di costi
+                </>
+              ) : (
+                "obiettivo raggiunto"
+              )}
             </span>
             {obiettivo.conPrevisti != null && obiettivo.previsti != null && (
               <>
                 <span className="text-muted-foreground">
-                  coi costi previsti da Fabio {euro(obiettivo.conPrevisti)}
+                  coi costi previsti da Fabio{" "}
+                  {conPrevisti ? (
+                    <Spiegato spiega={conPrevisti}>
+                      {euro(obiettivo.conPrevisti)}
+                    </Spiegato>
+                  ) : (
+                    euro(obiettivo.conPrevisti)
+                  )}
                   {obiettivo.sopra != null &&
                     (obiettivo.sopra >= 0
                       ? ` (+${euro(obiettivo.sopra)})`
@@ -495,6 +592,7 @@ export const Cruscotto = () => {
         ) : (
           <ComeLeggere />
         )}
+        <RiquadriVita mese={m.mese} />
       </div>
 
       {obiettivo && (

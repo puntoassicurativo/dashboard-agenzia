@@ -6,6 +6,7 @@
 import type { ReactNode } from "react";
 
 import { Spark } from "./Spark";
+import { type Spiegazione, Spiegato } from "./Spiega";
 
 export type Colore = "verde" | "blu" | "rosso";
 
@@ -67,6 +68,8 @@ export interface RiquadroProps {
   serie?: number[];
   etichettaSerie?: string;
   azione?: ReactNode;
+  /** 22/11/2026: the explanation of the big number (panel on hover or tap, full list on click). */
+  spiega?: Spiegazione;
   children?: ReactNode;
 }
 
@@ -78,6 +81,7 @@ export const Riquadro = ({
   serie,
   etichettaSerie,
   azione,
+  spiega,
   children,
 }: RiquadroProps) => (
   <div
@@ -92,7 +96,7 @@ export const Riquadro = ({
         coloraValore ? TESTO[colore] : "text-foreground"
       }`}
     >
-      {valore}
+      {spiega ? <Spiegato spiega={spiega}>{valore}</Spiegato> : valore}
     </div>
     <div className="text-xs sm:text-sm flex flex-col gap-1 tabular-nums">
       {children}

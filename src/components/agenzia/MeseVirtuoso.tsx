@@ -190,7 +190,10 @@ const SPIEGA: Record<ControlloBo["tipo"], string> = {
 
 export const useBlocchiSaldi = () =>
   useQuery({
-    queryKey: ["andamento", "saldi"],
+    // Own key: the main page reads the same rows through useBlocchi("saldi") (key ["andamento", "saldi"]) and caches
+    // them with months as an object. Sharing the key gave this page that object for a moment and `.find` crashed the
+    // whole Andamento page on slow networks (21/11/2026, "a volte non si carica").
+    queryKey: ["andamento", "saldi", "mesi-in-elenco"],
     queryFn: async () => {
       const { data, error } = await getSupabaseClient()
         .from("andamento_blocchi")

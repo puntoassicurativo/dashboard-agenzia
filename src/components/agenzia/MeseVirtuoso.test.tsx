@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
+import { useBlocchi } from "./datiLati";
 import { MeseVirtuoso, type SaldiMese } from "./MeseVirtuoso";
 
 // Invented data: real agency figures never go into the repository.
@@ -265,6 +266,38 @@ describe("MeseVirtuoso", () => {
     await expect
       .element(
         screen.getByText(/Verso Desio: foglio 200,00\s€,\s+banca\s+200,00\s€/),
+      )
+      .toBeVisible();
+  });
+
+  it("still shows the month after the main page has cached the same Saldi rows", async () => {
+    // Arrange: the main page reads the Saldi rows first, with months as an object
+    const client = new QueryClient();
+    const PaginaPrincipale = () => {
+      const q = useBlocchi<SaldiMese, unknown>("saldi");
+      return <div>{q.data ? "pagina principale pronta" : "..."}</div>;
+    };
+    const screen = await render(
+      <QueryClientProvider client={client}>
+        <PaginaPrincipale />
+      </QueryClientProvider>,
+    );
+    await expect
+      .element(screen.getByText("pagina principale pronta"))
+      .toBeVisible();
+
+    // Act: then the Andamento page replaces it with the same cache. Rerender, not unmount: the library unmounts
+    // every root again before the next test, and a root unmounted twice broke the following test.
+    await screen.rerender(
+      <QueryClientProvider client={client}>
+        <MeseVirtuoso mese="2030-03" />
+      </QueryClientProvider>,
+    );
+
+    // Assert
+    await expect
+      .element(
+        screen.getByRole("heading", { name: "Il mese è stato virtuoso?" }),
       )
       .toBeVisible();
   });

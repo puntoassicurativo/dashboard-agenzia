@@ -131,6 +131,8 @@ const useAndamento = () =>
       ]);
       if (m.error) throw m.error;
       if (i.error) throw i.error;
+      // a failed model query used to be ignored and the page silently fell back to the old cash-only months
+      if (mo.error) throw mo.error;
       // since 2026-11-11 months follow the accounting model (accrued commissions, brokers): when the agent
       // wrote them they replace the plain cash view of account 257
       const modello = new Map(

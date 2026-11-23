@@ -1,5 +1,6 @@
 export const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  // Review R004 (23/11/2026): only the agency dashboard may call the functions from a browser.
+  "Access-Control-Allow-Origin": "https://puntoassicurativo.github.io",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, PATCH, DELETE",

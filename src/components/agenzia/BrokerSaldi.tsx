@@ -1,4 +1,4 @@
-import { useAccessoUtile } from "./Andamento";
+import { useAccessoUtile } from "./accesso";
 import { useBlocchi } from "./datiLati";
 import { dataIt, euro, nomeMese } from "./formato";
 

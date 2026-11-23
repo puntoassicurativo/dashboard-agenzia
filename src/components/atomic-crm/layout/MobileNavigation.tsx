@@ -16,7 +16,7 @@ import {
   TrendingUp,
   Upload,
 } from "lucide-react";
-import { useAccessoUtile } from "../../agenzia/Andamento";
+import { useAccessoUtile } from "../../agenzia/accesso";
 import { VOCI_MENU } from "../../agenzia/MenuLato";
 
 const ICONE: Record<
@@ -45,7 +45,9 @@ import { TaskCreateSheet } from "../tasks/TaskCreateSheet";
 export const MobileNavigation = () => {
   const location = useLocation();
   const translate = useTranslate();
-  const { data: vedeUtile } = useAccessoUtile();
+  const accesso = useAccessoUtile();
+  // a failed read keeps the partners' entries: the pages show the error themselves (review R014)
+  const vedeUtile = accesso.data === true || accesso.isError;
 
   // 23/11/2026: the same entries as the side menu (MenuLato.tsx), partners' ones only for the partners
   const voci = VOCI_MENU.filter((v) => !v.soloSoci || vedeUtile);

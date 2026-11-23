@@ -112,10 +112,12 @@ const Avanzo = ({ p }: { p: DatiCruscotto }) => (
 
 export const UtileFiscale = ({ p }: { p: DatiCruscotto }) => {
   const f = p.fiscaleSpiega;
+  // the page is already behind PerSoci: no data here means the fiscal block did not load (review R064)
   if (!f)
     return (
       <p className="text-muted-foreground">
-        Questa parte e' riservata ai soci.
+        L'utile fiscale non si è caricato. Riprova tra poco o ricarica la
+        pagina.
       </p>
     );
   return (
@@ -128,7 +130,7 @@ export const UtileFiscale = ({ p }: { p: DatiCruscotto }) => {
       <Lista elenco={spiegaConPrevisti(f)?.elenco} />
       <p className="text-sm">
         Per provare altri numeri:{" "}
-        <Link to="/contabilita/simula-tasse" className="text-pa-blu underline">
+        <Link to="/tasse/simula-tasse" className="text-pa-blu underline">
           Simula tasse
         </Link>
         .
@@ -141,10 +143,11 @@ const VitaArea = ({ p, area }: { p: DatiCruscotto; area: Area }) => {
   const q = useBlocchi<VitaMese, VitaInfo>("vita");
   const info = q.data?.info;
   if (q.isPending) return <p className="text-muted-foreground">Carico...</p>;
+  if (q.error) return <ErroreCaricamento cosa="la Vita" errore={q.error} />;
   if (!info)
     return (
       <p className="text-muted-foreground">
-        Questa parte e' riservata ai soci.
+        Il giro del mattino non ha ancora scritto i dati della Vita.
       </p>
     );
   const mese = q.data?.mesi[p.m.mese];

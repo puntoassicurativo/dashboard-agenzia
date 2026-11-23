@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
-import { useAccessoUtile } from "./Andamento";
+import { useAccessoUtile } from "./accesso";
 import { BrokerSaldi } from "./BrokerSaldi";
 import { DaFare } from "./DaFare";
 import { type RigaLato, FattoNota, TestoCopia, useRighe } from "./datiLati";

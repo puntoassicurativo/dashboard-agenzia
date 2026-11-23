@@ -19,7 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
-import { useAccessoUtile } from "./Andamento";
+import { useAccessoUtile } from "./accesso";
 import { useCaricamenti } from "./caricamentiDati";
 import { mesiInLettere } from "./formato";
 

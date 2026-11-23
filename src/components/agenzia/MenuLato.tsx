@@ -1,7 +1,7 @@
 import { Link, matchPath, useLocation } from "react-router";
 
 import { cn } from "@/lib/utils";
-import { useAccessoUtile } from "./Andamento";
+import { useAccessoUtile } from "./accesso";
 
 export interface VoceMenu {
   titolo: string;
@@ -52,7 +52,9 @@ const GRUPPI: { titolo: string; voci: VoceMenu[] }[] = [
 /** Dark blue side menu of style 2 (desktop only; the phone has the bar at the bottom). */
 export const MenuLato = () => {
   const { pathname } = useLocation();
-  const { data: vedeUtile } = useAccessoUtile();
+  const accesso = useAccessoUtile();
+  // a failed read keeps the partners' entries: the pages show the error themselves (review R014)
+  const vedeUtile = accesso.data === true || accesso.isError;
   return (
     <aside
       aria-label="Menu"

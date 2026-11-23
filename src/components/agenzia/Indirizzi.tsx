@@ -3,26 +3,21 @@
  * Carica file; everyone sees Da fare. The old addresses (saved links, phone home icons) open the new pages; the old pages stay
  * in the code until the new ones are tried.
  */
-import type { ReactNode } from "react";
 import { Navigate, useParams } from "react-router";
 
-import { useAccessoUtile } from "./Andamento";
+import { Carico, PerSoci, useAccessoUtile } from "./accesso";
 import { Cruscotto } from "./CruscottoSemplice";
+import { ErroreCaricamento } from "./ErroreCaricamento";
 
-const Carico = () => <div className="p-4 text-muted-foreground">Carico...</div>;
+export { PerSoci };
 
-/** Home: the Cruscotto for the partners, Da fare for everyone else. */
+/** Home: the Cruscotto for the partners, Da fare for everyone else; a failed read is shown, not taken as "not a partner". */
 export const Inizio = () => {
   const accesso = useAccessoUtile();
   if (accesso.isPending) return <Carico />;
+  if (accesso.isError)
+    return <ErroreCaricamento cosa="i permessi" errore={accesso.error} />;
   return accesso.data ? <Cruscotto /> : <Navigate to="/da-fare" replace />;
-};
-
-/** A partners' page: the others go to Da fare (the data is protected by RLS anyway). */
-export const PerSoci = ({ children }: { children: ReactNode }) => {
-  const accesso = useAccessoUtile();
-  if (accesso.isPending) return <Carico />;
-  return accesso.data ? <>{children}</> : <Navigate to="/da-fare" replace />;
 };
 
 /** Where each old tab of Contabilita' went. */
@@ -68,6 +63,8 @@ export const VecchiaAmministrazione = () => {
   const { voce = "" } = useParams();
   const accesso = useAccessoUtile();
   if (accesso.isPending) return <Carico />;
+  if (accesso.isError)
+    return <ErroreCaricamento cosa="i permessi" errore={accesso.error} />;
   const dove = DA_AMMINISTRAZIONE[voce];
   return (
     <Navigate

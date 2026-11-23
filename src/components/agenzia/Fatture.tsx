@@ -8,7 +8,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
-import { useAccessoUtile } from "./Andamento";
 import { useBlocchi } from "./datiLati";
 import { ErroreCaricamento } from "./ErroreCaricamento";
 import {
@@ -163,7 +162,6 @@ const RiquadroTombale = ({ t }: { t: Tombale }) => (
 );
 
 export const Fatture = () => {
-  const accesso = useAccessoUtile();
   const sub = useFattureSub();
   const broker = useBlocchi<{ righe?: BrokerRiga[] }, unknown>("broker_saldi");
   const cassetto = useBlocchi<{ fatture?: FatturaCassetto[] }, InfoCassetto>(
@@ -182,14 +180,6 @@ export const Fatture = () => {
     setParametri(p, { replace: true });
   };
 
-  if (accesso.isPending)
-    return <div className="p-4 text-muted-foreground">Carico...</div>;
-  if (!accesso.data)
-    return (
-      <div className="p-4 text-muted-foreground">
-        Questa parte e' riservata ai soci.
-      </div>
-    );
   const qs = [sub, broker, cassetto, bollette, tombale];
   if (qs.some((q) => q.isPending))
     return <div className="p-4 text-muted-foreground">Carico i dati...</div>;

@@ -10,6 +10,7 @@ import { Fragment, useState } from "react";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
 import { ErroreCaricamento } from "./ErroreCaricamento";
+import { useAccessoUtile } from "./accesso";
 import {
   CorreggiVoce,
   CosaManca,
@@ -99,21 +100,6 @@ const num = (v: number) =>
   } as unknown as Intl.NumberFormatOptions);
 const dataIt = (iso: string) =>
   new Date(iso + "T12:00:00").toLocaleDateString("it-IT");
-
-/** true se l'utente collegato puo' vedere l'andamento mese (riga sua in utile_accesso). */
-export const useAccessoUtile = () =>
-  useQuery({
-    queryKey: ["utile", "accesso"],
-    queryFn: async () => {
-      const { data, error } = await getSupabaseClient()
-        .from("utile_accesso")
-        .select("user_id")
-        .limit(1);
-      if (error) return false;
-      return (data?.length ?? 0) > 0;
-    },
-    staleTime: 10 * 60 * 1000,
-  });
 
 const useAndamento = () =>
   useQuery({

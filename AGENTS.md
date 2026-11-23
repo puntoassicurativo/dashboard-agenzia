@@ -1,5 +1,25 @@
 # AGENTS.md
 
+## This repository today (read first)
+
+This fork of Atomic CRM is an insurance agency dashboard, not a CRM. The CRM pages (contacts, companies, deals,
+users, settings, import, changelog) have no route; the agency pages live in `src/components/agenzia/` and read
+tables written by a scheduled Python agent outside this repository (`cruscotto`, `sezione_righe`, `sezione_info`,
+`andamento_blocchi`, the private bucket `caricamenti`). Row Level Security keeps the partners' figures to the users
+listed in `utile_accesso`.
+
+- Language exception: user-facing strings and domain identifiers (file, component and function names such as
+  `CruscottoSemplice`, `useAccessoUtile`, `tondo`) are Italian. Comments, docs, commit messages and log strings are
+  English. See `.claude/rules/english-only.md`.
+- No `make` on the development PC: run tools directly. Unit tests: `node node_modules/vitest/vitest.mjs run
+  --project app <file>` started from the project folder written with an upper-case drive letter (`C:\...`); with a
+  lower-case `c:` the browser runner hangs and closes with "rpc is closed".
+- Never commit a regenerated `registry.json`.
+- Every number on an agency page carries its calculation and source (`Spiega.tsx`): the rows of the panel add up to
+  the number and the total of the full list is the number.
+- Migrations are applied one at a time (some stay pending on purpose): never `supabase db push` blindly.
+
+
 ## Project Overview
 
 Atomic CRM is a full-featured CRM built with React, shadcn-admin-kit, and Supabase. It provides contact management, task tracking, notes, email capture, and deal management with a Kanban board.

@@ -11,7 +11,12 @@ the conversational language in the chat. This applies to:
 - Templates and example placeholders inside agent prompts
 - Configuration keys (JSON / YAML keys), default config values
 
-The only place where another language may appear in a committed file is a
+**Exception for this repository (agency dashboard, decided 23/11/2026):** the strings shown to the users and the
+domain identifiers (file, component, hook and function names such as `CruscottoSemplice`, `useAccessoUtile`,
+`nomeMese`) are Italian, because the users and the domain are Italian. Comments, docs, commit messages, log strings
+and configuration keys stay English. Do not rewrite Italian user-facing text or domain names into English.
+
+The only other place where another language may appear in a committed file is a
 **runtime data value** that legitimately reflects the user's domain (e.g.
 the user's chosen `industry: "boulangerie"` or `entity name: "facture"`
 inside `project-context.json` or fake-data fixtures). Even then, prefer

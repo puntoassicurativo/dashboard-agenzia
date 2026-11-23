@@ -175,53 +175,6 @@ export const useInfo = () =>
     },
   });
 
-/** Pagina elenco delle sezioni. */
-export const SezioniPage = () => {
-  const { data: info } = useInfo();
-  return (
-    <div className="flex flex-col gap-4 max-w-5xl mx-auto w-full px-4 pt-2 pb-28 md:px-0 md:pt-0 md:pb-8">
-      <div>
-        <h1 className="text-xl font-semibold">Sezioni</h1>
-        <p className="text-sm text-muted-foreground">
-          Liste aggiornate in automatico da BusinessObjects. Per ora le vedete solo tu, Fabio e Claudio: quali
-          tenere e a chi mandarle lo decide Fabio.
-        </p>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Object.entries(SEZIONI).map(([k, m]) => {
-          const i = info?.[k];
-          const tot = i?.riepilogo?.totale;
-          const contenuto = (
-            <div
-              className={`rounded-lg border bg-card p-4 h-full flex flex-col gap-1 ${m.inArrivo ? "opacity-60" : "hover:border-foreground/40"}`}
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-sm text-muted-foreground">Sezione {k}</span>
-                {tot != null && !m.inArrivo && (
-                  <span className="text-sm tabular-nums">{k === "F" ? "" : `${tot} righe`}</span>
-                )}
-              </div>
-              <div className="font-semibold">{m.titolo}</div>
-              <div className="text-sm text-muted-foreground">{m.breve}</div>
-              <div className="text-xs text-muted-foreground mt-auto pt-2">
-                {m.inArrivo ?? (i ? `Aggiornata il ${dataOra(i.aggiornato_il)}, ${m.frequenza}` : `Non ancora aggiornata, ${m.frequenza}`)}
-              </div>
-            </div>
-          );
-          return m.inArrivo ? (
-            <div key={k}>{contenuto}</div>
-          ) : (
-            <Link key={k} to={`/sezioni/${k}`} className="no-underline text-foreground">
-              {contenuto}
-            </Link>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-/** Tabelle S/P della sezione F. */
 const TabelleSP = ({ r }: { r: any }) => {
   const nomi: Record<string, string> = {
     linea: "Per linea",

@@ -199,6 +199,111 @@ describe("Fatture", () => {
       .not.toBeInTheDocument();
   });
 
+  it("lists the tax drawer once: copies already shown are hidden, a missing payment without the XML is to check", () => {
+    const base = {
+      numero: "1",
+      ritenuta: null,
+      imponibile: 100,
+      iva: 22,
+      totale: 122,
+      netto: null,
+    };
+    const tutte = unisciFatture({
+      sub: {},
+      broker: {},
+      cassetto: {
+        "2030-04": {
+          fatture: [
+            {
+              ...base,
+              fornitore: "Copia Gia Vista",
+              data: "2030-04-01",
+              categoria: "broker",
+              anche_in: "broker_saldi",
+            },
+            {
+              ...base,
+              fornitore: "Broker Inventato",
+              data: "2030-04-02",
+              categoria: "broker",
+              dettaglio: "elenco",
+              esito: "da verificare",
+            },
+            {
+              ...base,
+              fornitore: "Fornitore Con Iban",
+              data: "2030-04-03",
+              categoria: "fornitore",
+              dettaglio: "xml",
+              iban: "IT00X0000000000000000000001",
+              modalita: "MP05",
+              netto: 122,
+              esito: "non ancora pagata",
+            },
+            {
+              ...base,
+              fornitore: "Professionista Inventato",
+              data: "2030-04-04",
+              categoria: "fornitore",
+              dettaglio: "elenco",
+              ritenuta: 20,
+              netto: 102,
+              netto_da_bonifico: true,
+              esito: "pagata",
+              pagamento: { conto: "257", data: "2030-04-20" },
+            },
+          ],
+        },
+      },
+      bollette: [],
+    });
+    expect(tutte.map((r) => r.fornitore)).not.toContain("Copia Gia Vista");
+    const per = Object.fromEntries(tutte.map((r) => [r.fornitore, r]));
+    expect([
+      per["Broker Inventato"].tipo,
+      per["Broker Inventato"].stato,
+    ]).toEqual(["broker", "da verificare"]);
+    expect(per["Fornitore Con Iban"].stato).toBe("da pagare");
+    expect(per["Professionista Inventato"].stato).toBe("pagata");
+    expect(per["Professionista Inventato"].spiega.calcolo).toContainEqual({
+      voce: "Ritenuta (ricavata dal bonifico)",
+      valore: 20,
+      segno: "-",
+    });
+  });
+
+  it("a sub-agent invoice that arrived without its net amount is to check, not still to arrive", () => {
+    const tutte = unisciFatture({
+      sub: {
+        "2030-03|CAMPOROSSO": {
+          atteso: {
+            imponibile: 640,
+            completo: true,
+            decadi: [{ decade: "2030-03-10", totale: 640 }],
+          },
+          fattura: {
+            numero: "11",
+            data: "2030-04-09",
+            imponibile: 630,
+            ritenuta: null,
+            netto: null,
+            metodo: "cassetto elenco",
+          },
+          bonifico: null,
+          bonifico_diverso: null,
+        },
+      },
+      broker: {},
+      cassetto: {},
+      bollette: [],
+    });
+    expect([tutte[0].stato, tutte[0].importo, tutte[0].mese]).toEqual([
+      "da verificare",
+      630,
+      "2030-04",
+    ]);
+  });
+
   it("a bill without its direct debit yet is waiting, not unpaid", () => {
     const tutte = unisciFatture({
       sub: {},

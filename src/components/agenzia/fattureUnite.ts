@@ -21,6 +21,8 @@ export interface FatturaSub {
     bollo?: number | null;
     ritenuta: number | null;
     netto: number | null;
+    /** "cassetto xml" / "cassetto elenco" when the mail did not have it (23/11/2026) */
+    metodo?: string;
   } | null;
   bonifico: { data: string; importo: number; conto?: string } | null;
   bonifico_diverso: { data: string; importo: number; conto?: string } | null;
@@ -46,10 +48,19 @@ export interface FatturaCassetto {
   iva?: number;
   ritenuta: number | null;
   totale: number;
-  netto?: number;
+  netto?: number | null;
   scadenza?: string | null;
+  iban?: string | null;
+  /** payment method of the XML: MP05 bank transfer, MP08 card, MP09/MP19/MP20 direct debit */
+  modalita?: string | null;
   esito?: string;
   pagamento?: { conto?: string; data: string } | null;
+  /** 23/11/2026: "xml" = full invoice, "elenco" = row of the CSV list (no withholding, no net amount) */
+  dettaglio?: "xml" | "elenco";
+  categoria?: "subagente" | "collaboratore" | "broker" | "fornitore";
+  /** already listed from another source (mail of the sub-agents, broker statements): not shown twice */
+  anche_in?: string;
+  netto_da_bonifico?: boolean;
 }
 export interface Bolletta {
   data: string;
@@ -65,7 +76,12 @@ export type Tipo =
   | "broker"
   | "fornitori"
   | "bollette";
-export type Stato = "pagata" | "da pagare" | "importo diverso" | "da arrivare";
+export type Stato =
+  | "pagata"
+  | "da pagare"
+  | "importo diverso"
+  | "da arrivare"
+  | "da verificare";
 
 export const TIPI: Record<Tipo, string> = {
   subagenti: "Subagenti",
@@ -79,6 +95,7 @@ export const STATI: Stato[] = [
   "da pagare",
   "importo diverso",
   "da arrivare",
+  "da verificare",
 ];
 
 export interface Fattura {
@@ -137,6 +154,32 @@ const daSub = (chiave: string, v: FatturaSub): Fattura | null => {
     tipo === "subagenti"
       ? "Fattura delle provvigioni del mese del subagente (80% delle provvigioni dei suoi titoli). Si paga il netto, col bonifico."
       : "Fattura del collaboratore per le provvigioni del mese. Si paga il netto, col bonifico.";
+  if (f && f.netto == null && f.imponibile != null) {
+    // 23/11/2026: arrived (e.g. only in the tax drawer's CSV list) but the withholding and net amount are unknown
+    const dataFattura = f.data ?? fineMese(competenza);
+    return {
+      chiave,
+      data: dataFattura,
+      mese: dataFattura.slice(0, 7),
+      tipo,
+      fornitore: nome(chi),
+      dettaglio: `provvigioni di ${nomeMese(competenza)}${f.numero ? `, n. ${f.numero}` : ""}, importi da controllare`,
+      importo: f.imponibile,
+      ritenuta: null,
+      stato: "da verificare",
+      pagata: "da verificare",
+      spiega: {
+        titolo: `${nome(chi)}, fattura di ${nomeMese(competenza)}`,
+        cosa: `${cosa} La fattura è arrivata ma ritenuta e netto non si leggono: il pagamento si controlla quando c'è l'XML (download massivo del cassetto) o il PDF.`,
+        calcolo: [
+          { voce: "Imponibile della fattura", valore: f.imponibile },
+          ...decadi,
+        ],
+        fonte: `${f.metodo === "cassetto elenco" ? "elenco delle fatture del cassetto fiscale" : POSTA}; decadi dai report BO`,
+        elenco: elencoDecadi,
+      },
+    };
+  }
   if (!f || f.netto == null) {
     if (!v.atteso) return null;
     return {
@@ -206,7 +249,7 @@ const daSub = (chiave: string, v: FatturaSub): Fattura | null => {
       titolo: `${nome(chi)}, fattura di ${nomeMese(competenza)}`,
       cosa,
       calcolo,
-      fonte: `${POSTA}; bonifico dagli estratti conto; decadi dai report BO`,
+      fonte: `${f.metodo?.startsWith("cassetto") ? (f.metodo === "cassetto elenco" ? "elenco delle fatture del cassetto fiscale (non arrivata alla posta): ritenuta e netto si leggono solo dall'XML" : "XML del cassetto fiscale (non arrivata alla posta)") : POSTA}; bonifico dagli estratti conto; decadi dai report BO`,
       elenco: elencoDecadi,
     },
   };
@@ -257,27 +300,70 @@ const daBroker = (r: BrokerRiga, i: number): Fattura => {
   };
 };
 
+const TIPO_CASSETTO: Record<NonNullable<FatturaCassetto["categoria"]>, Tipo> = {
+  subagente: "subagenti",
+  collaboratore: "collaboratori",
+  broker: "broker",
+  fornitore: "fornitori",
+};
+
+/**
+ * 23/11/2026: red "da pagare" only for an invoice from the XML that asks for a bank transfer (MP05) and has no
+ * matching outflow. Without the XML, or paid by direct debit, card or Saldi (brokers), a missing match is not a
+ * missing payment: "da verificare".
+ */
+const statoCassetto = (f: FatturaCassetto): Stato => {
+  if (f.esito === "nota di credito" || f.esito === "niente da pagare")
+    return "pagata";
+  if (f.esito ? f.esito.startsWith("pagata") : !!f.pagamento) return "pagata";
+  return f.dettaglio !== "elenco" &&
+    f.modalita === "MP05" &&
+    f.categoria !== "broker"
+    ? "da pagare"
+    : "da verificare";
+};
+
+const cosaCassetto = (f: FatturaCassetto, stato: Stato): string => {
+  const base =
+    f.dettaglio === "elenco"
+      ? "Fattura ricevuta, dall'elenco del cassetto fiscale (senza l'XML: ritenuta e netto non si leggono)."
+      : "Fattura ricevuta dal cassetto fiscale (XML).";
+  if (f.esito === "niente da pagare")
+    return `${base} Totale a zero (arrotondamento): non c'è niente da pagare.`;
+  if (stato === "pagata" && f.netto_da_bonifico)
+    return `${base} Pagata: in banca c'è l'uscita col nome del fornitore e un importo che torna col totale meno una ritenuta usuale; netto e ritenuta vengono dal bonifico.`;
+  if (stato === "pagata")
+    return `${base} Abbinata all'uscita in banca con lo stesso netto e il nome del fornitore.`;
+  if (stato === "da verificare")
+    return `${base} Pagamento non trovato negli estratti conto: può essere un addebito, una carta, un'uscita del foglio Saldi o un bonifico con un'altra descrizione.${f.dettaglio === "elenco" ? " Con l'XML del mese il controllo è esatto." : ""}`;
+  return `${base} Chiede un bonifico e negli estratti conto non c'è un'uscita col netto da pagare.`;
+};
+
 const daCassetto = (f: FatturaCassetto, i: number): Fattura => {
-  const pagata = f.esito ? f.esito.startsWith("pagata") : !!f.pagamento;
   const credito = f.esito === "nota di credito";
+  const stato = statoCassetto(f);
   return {
     chiave: `cassetto|${f.fornitore}|${f.numero}|${i}`,
     data: f.data,
     mese: f.data.slice(0, 7),
-    tipo: "fornitori",
+    tipo: TIPO_CASSETTO[f.categoria ?? "fornitore"],
     fornitore: f.fornitore,
-    dettaglio: `${f.tipo_testo ?? "fattura"} n. ${f.numero} (cassetto fiscale)`,
+    dettaglio: `${f.tipo_testo ?? "fattura"} n. ${f.numero} (cassetto fiscale${f.dettaglio === "elenco" ? ", elenco" : ""})`,
     importo: f.totale,
     ritenuta: f.ritenuta,
-    stato: pagata || credito ? "pagata" : "da pagare",
+    stato,
     pagata: f.pagamento?.data
       ? dataIt(f.pagamento.data)
       : credito
         ? "nota di credito"
-        : "non ancora",
+        : f.esito === "niente da pagare"
+          ? "niente da pagare"
+          : stato === "da verificare"
+            ? "da verificare"
+            : "non ancora",
     spiega: {
       titolo: `${f.fornitore}, n. ${f.numero}`,
-      cosa: "Fattura ricevuta dal cassetto fiscale, abbinata all'uscita in banca con lo stesso netto e il nome del fornitore.",
+      cosa: cosaCassetto(f, stato),
       calcolo: [
         ...(f.imponibile != null
           ? [{ voce: "Imponibile", valore: f.imponibile }]
@@ -287,10 +373,23 @@ const daCassetto = (f: FatturaCassetto, i: number): Fattura => {
           : []),
         { voce: "Totale fattura", valore: f.totale, segno: "=" },
         ...(f.ritenuta
-          ? [{ voce: "Ritenuta", valore: f.ritenuta, segno: "-" as const }]
+          ? [
+              {
+                voce: f.netto_da_bonifico
+                  ? "Ritenuta (ricavata dal bonifico)"
+                  : "Ritenuta",
+                valore: f.ritenuta,
+                segno: "-" as const,
+              },
+            ]
           : []),
         ...(f.netto != null
-          ? [{ voce: "Netto da pagare", valore: f.netto }]
+          ? [
+              {
+                voce: f.netto_da_bonifico ? "Netto pagato" : "Netto da pagare",
+                valore: f.netto,
+              },
+            ]
           : []),
         ...(f.pagamento
           ? [
@@ -301,8 +400,7 @@ const daCassetto = (f: FatturaCassetto, i: number): Fattura => {
             ]
           : []),
       ],
-      fonte:
-        "cassetto fiscale (XML della fattura); estratti conto per il pagamento",
+      fonte: `cassetto fiscale (${f.dettaglio === "elenco" ? "elenco CSV delle fatture ricevute" : "XML della fattura"}); estratti conto per il pagamento`,
     },
   };
 };
@@ -350,8 +448,9 @@ export const unisciFatture = (f: Fonti): Fattura[] => {
       .map(([k, v]) => daSub(k, v))
       .filter((x): x is Fattura => x != null),
     ...Object.values(f.broker).flatMap((m) => (m.righe ?? []).map(daBroker)),
+    // an invoice already listed from the mail or the broker statements is not repeated (anche_in, 23/11/2026)
     ...Object.values(f.cassetto).flatMap((m) =>
-      (m.fatture ?? []).map(daCassetto),
+      (m.fatture ?? []).filter((x) => !x.anche_in).map(daCassetto),
     ),
     ...f.bollette.map(daBolletta),
   ];

@@ -42,6 +42,9 @@ interface Tombale {
 }
 interface InfoCassetto {
   n_fatture: number;
+  /** rows of the CSV list without their XML (23/11/2026) */
+  senza_xml?: number;
+  mesi_senza_xml?: string[];
   errori: { file: string; errore: string }[];
   uscite_al: string | null;
   nota: string;
@@ -71,6 +74,7 @@ const COLORE: Record<Stato, string> = {
   "da pagare": "text-pa-rosso",
   "importo diverso": "text-pa-rosso",
   "da arrivare": "text-muted-foreground",
+  "da verificare": "text-amber-700",
 };
 
 const RigaElenco = ({ r }: { r: Fattura }) => (
@@ -200,7 +204,7 @@ export const Fatture = () => {
     <div className="pt-4 md:pt-0">
       <Pagina
         titolo="Fatture"
-        sotto={`Tutte le fatture, dalla più recente: subagenti, collaboratori, broker, bollette e, quando arrivano, quelle del cassetto fiscale. ${tutte.length} in tutto. Passa sopra (o tocca) un importo per vedere il calcolo.`}
+        sotto={`Tutte le fatture, dalla più recente: subagenti, collaboratori, broker, bollette e fornitori del cassetto fiscale. ${tutte.length} in tutto. Passa sopra (o tocca) un importo per vedere il calcolo.`}
       >
         <div className="flex flex-wrap items-center gap-3">
           <Scelta
@@ -315,6 +319,15 @@ export const Fatture = () => {
           <p className="text-xs text-muted-foreground">
             Fatture del cassetto fiscale: non ancora arrivate.{" "}
             {infoCassetto.nota}
+          </p>
+        )}
+        {infoCassetto && (infoCassetto.senza_xml ?? 0) > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {infoCassetto.senza_xml} fatture del cassetto vengono solo
+            dall'elenco, senza l'XML: ritenuta e netto non si leggono e il
+            pagamento si ricava dal bonifico quando c'è il nome del fornitore.
+            Mesi da scaricare col download massivo:{" "}
+            {(infoCassetto.mesi_senza_xml ?? []).map(nomeMese).join(", ")}.
           </p>
         )}
         {infoCassetto && infoCassetto.errori.length > 0 && (

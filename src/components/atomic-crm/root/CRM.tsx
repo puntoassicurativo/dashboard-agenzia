@@ -28,7 +28,12 @@ import { ImportPage } from "../misc/ImportPage";
 import { ChangelogPage } from "../misc/ChangelogPage";
 import { SezioniPage, SezionePage } from "../../agenzia/Sezioni";
 import { AndamentoPage } from "../../agenzia/Andamento";
-import { AmministrazionePage, ContabilitaPage } from "../../agenzia/Lati";
+import {
+  AmministrazionePage,
+  ContabilitaPage,
+  TassePage,
+  UtileCostiPage,
+} from "../../agenzia/Lati";
 import { Fatture } from "../../agenzia/Fatture";
 import { CruscottoDettaglio } from "../../agenzia/CruscottoDettaglio";
 import {
@@ -235,6 +240,14 @@ export const CRM = ({
   );
 };
 
+// Pages of the simplification plan of 21/11/2026 (P4), the same on the computer and on the phone
+const rottePagineNuove = [
+  <Route key="uc" path="/utile-costi" element={<UtileCostiPage />} />,
+  <Route key="ucv" path="/utile-costi/:voce" element={<UtileCostiPage />} />,
+  <Route key="t" path="/tasse" element={<TassePage />} />,
+  <Route key="tv" path="/tasse/:voce" element={<TassePage />} />,
+];
+
 const DesktopAdmin = (
   props: CoreAdminProps & {
     dashboard?: DashboardComponent;
@@ -275,6 +288,7 @@ const DesktopAdmin = (
           path="/amministrazione/:voce"
           element={<AmministrazionePage />}
         />
+        {rottePagineNuove}
         <Route path={SettingsPage.path} element={<SettingsPage />} />
         <Route path={ImportPage.path} element={<ImportPage />} />
         <Route path={ChangelogPage.path} element={<ChangelogPage />} />
@@ -378,6 +392,7 @@ const MobileAdmin = (
             path="/amministrazione/:voce"
             element={<AmministrazionePage />}
           />
+          {rottePagineNuove}
           <Route path={ChangelogPage.path} element={<ChangelogPage />} />
         </CustomRoutes>
         <Resource

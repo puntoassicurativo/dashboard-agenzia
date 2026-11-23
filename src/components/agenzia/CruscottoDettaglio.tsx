@@ -110,7 +110,7 @@ const Avanzo = ({ p }: { p: DatiCruscotto }) => (
   </>
 );
 
-const UtileFiscale = ({ p }: { p: DatiCruscotto }) => {
+export const UtileFiscale = ({ p }: { p: DatiCruscotto }) => {
   const f = p.fiscaleSpiega;
   if (!f)
     return (
@@ -243,6 +243,26 @@ export const CruscottoDettaglio = () => {
           Mese scelto: {nomeMese(dati.m.mese)} {dati.m.mese.slice(0, 4)}.
         </p>
       )}
+    </div>
+  );
+};
+
+/** 23/11/2026: the same taxable-profit detail, inside the Tasse page (no month picker: it covers the year). */
+export const UtileFiscaleSolo = () => {
+  const { q, dati } = useDatiCruscotto();
+  if (q.isPending)
+    return <div className="p-4 text-muted-foreground">Carico i dati...</div>;
+  if (q.error) return <ErroreCaricamento errore={q.error} />;
+  if (!dati)
+    return (
+      <div className="p-4 text-muted-foreground">
+        Nessun dato ancora: l'agente non ha ancora girato.
+      </div>
+    );
+  return (
+    <div className="flex flex-col gap-4 max-w-6xl mx-auto w-full px-4 pb-28 md:px-0 md:pb-8">
+      <h1 className="text-xl font-semibold">Utile fiscale previsto</h1>
+      <UtileFiscale p={dati} />
     </div>
   );
 };

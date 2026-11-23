@@ -70,12 +70,9 @@ export const i18nProvider = polyglotI18nProvider(
     }
     return italianCatalog;
   },
-  getInitialLocale(),
-  [
-    { locale: "it", name: "Italiano" },
-    { locale: "en", name: "English" },
-    { locale: "fr", name: "Français" },
-  ],
+  // decision E6 of the review (23/11/2026): Italian only, so the profile shows no language choice
+  "it",
+  [{ locale: "it", name: "Italiano" }],
   { allowMissing: true },
 );
 

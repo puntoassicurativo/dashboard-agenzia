@@ -3,13 +3,13 @@ import { Inizio } from "@/components/agenzia/Indirizzi";
 import logo from "@/assets/punto_assicurativo.png";
 
 /**
- * Dashboard di agenzia Punto Assicurativo (agenzia Vittoria 346), costruita su Atomic CRM v1.6.1.
- * La pagina iniziale e' il cruscotto semplice per i soci (src/components/agenzia/CruscottoSemplice.tsx, dettagli in
- * /cruscotto/...), "Da fare" per gli altri (23/11/2026). Dati dall'agente Python agenti\cruscotto_agenzia.
+ * Agency dashboard of Punto Assicurativo, built on Atomic CRM v1.6.1. The home page is the simple Cruscotto for the
+ * partners (src/components/agenzia/CruscottoSemplice.tsx, details under /cruscotto/...), "Da fare" for everyone else.
+ * Data comes from the Python agent agenti\cruscotto_agenzia.
  */
 const App = () => (
   <CRM
-    title="Agenzia 346"
+    title="Punto Assicurativo"
     dashboard={Inizio}
     lightModeLogo={logo}
     darkModeLogo={logo}

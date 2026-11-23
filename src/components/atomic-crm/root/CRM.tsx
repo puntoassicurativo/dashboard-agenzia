@@ -5,7 +5,7 @@ import type {
   LayoutComponent,
 } from "ra-core";
 import { CustomRoutes, localStorageStore, Resource } from "ra-core";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate, Route } from "react-router";
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
@@ -15,17 +15,12 @@ import { ForgotPasswordPage } from "@/components/supabase/forgot-password-page";
 import { SetPasswordPage } from "@/components/supabase/set-password-page";
 import { OAuthConsentPage } from "@/components/supabase/oauth-consent-page";
 
-import companies from "../companies";
-import contacts from "../contacts";
 import { Dashboard } from "../dashboard/Dashboard";
 import { MobileDashboard } from "../dashboard/MobileDashboard";
-import deals from "../deals";
 import { Layout } from "../layout/Layout";
 import { MobileLayout } from "../layout/MobileLayout";
 import { SignupPage } from "../login/SignupPage";
 import { ConfirmationRequired } from "../login/ConfirmationRequired";
-import { ImportPage } from "../misc/ImportPage";
-import { ChangelogPage } from "../misc/ChangelogPage";
 import { CaricaFile } from "../../agenzia/CaricaFile";
 import { DaFarePagina } from "../../agenzia/DaFarePagina";
 import {
@@ -41,10 +36,8 @@ import {
   getAuthProvider as defaultAuthProviderBuilder,
   getDataProvider as defaultDataProviderBuilder,
 } from "../providers/supabase";
-import sales from "../sales";
 import { SettingsPageMobile } from "../settings/SettingsPageMobile";
 import { ProfilePage } from "../settings/ProfilePage";
-import { SettingsPage } from "../settings/SettingsPage";
 import {
   CONFIGURATION_STORE_KEY,
   type ConfigurationContextValue,
@@ -65,11 +58,6 @@ import {
 import { i18nProvider as defaulti18nProvider } from "../providers/commons/i18nProvider";
 import { StartPage } from "../login/StartPage.tsx";
 import { useIsMobile } from "@/hooks/use-mobile.ts";
-import { MobileTasksList } from "../tasks/MobileTasksList.tsx";
-import { ContactListMobile } from "../contacts/ContactList.tsx";
-import { ContactShow } from "../contacts/ContactShow.tsx";
-import { CompanyShow } from "../companies/CompanyShow.tsx";
-import { NoteShowPage } from "../notes/NoteShowPage.tsx";
 
 const defaultStore = localStorageStore(undefined, "CRM");
 
@@ -327,17 +315,16 @@ const DesktopAdmin = (
       <CustomRoutes>
         <Route path={ProfilePage.path} element={<ProfilePage />} />
         {rottePagineNuove}
-        <Route path={SettingsPage.path} element={<SettingsPage />} />
-        <Route path={ImportPage.path} element={<ImportPage />} />
-        <Route path={ChangelogPage.path} element={<ChangelogPage />} />
       </CustomRoutes>
-      <Resource name="deals" {...deals} />
-      <Resource name="contacts" {...contacts} />
-      <Resource name="companies" {...companies} />
+      {/* review R044/R105 (23/11/2026): the Atomic CRM pages (contacts, companies, deals, users, settings, import,
+          changelog) have no route in the agency dashboard; the resources stay registered for the CRM internals */}
+      <Resource name="deals" />
+      <Resource name="contacts" />
+      <Resource name="companies" />
       <Resource name="contact_notes" />
       <Resource name="deal_notes" />
       <Resource name="tasks" />
-      <Resource name="sales" {...sales} />
+      <Resource name="sales" />
       <Resource name="tags" />
     </Admin>
   );
@@ -361,20 +348,26 @@ const MobileAdmin = (
     layout?: LayoutComponent;
   },
 ) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        gcTime: 1000 * 60 * 60 * 24, // 24 hours
-        networkMode: "offlineFirst",
-      },
-      mutations: {
-        networkMode: "offlineFirst",
-      },
-    },
-  });
-  const asyncStoragePersister = createAsyncStoragePersister({
-    storage: localStorage,
-  });
+  // created once (review R102): a new client at every render reloaded every query on the phone
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            gcTime: 1000 * 60 * 60 * 24, // 24 hours
+            networkMode: "offlineFirst",
+          },
+          mutations: {
+            networkMode: "offlineFirst",
+          },
+        },
+      }),
+  );
+  const [asyncStoragePersister] = useState(() =>
+    createAsyncStoragePersister({
+      storage: localStorage,
+    }),
+  );
 
   return (
     <PersistQueryClientProvider
@@ -419,18 +412,11 @@ const MobileAdmin = (
             element={<SettingsPageMobile />}
           />
           {rottePagineNuove}
-          <Route path={ChangelogPage.path} element={<ChangelogPage />} />
         </CustomRoutes>
-        <Resource
-          name="contacts"
-          list={ContactListMobile}
-          show={ContactShow}
-          recordRepresentation={contacts.recordRepresentation}
-        >
-          <Route path=":id/notes/:noteId" element={<NoteShowPage />} />
-        </Resource>
-        <Resource name="companies" show={CompanyShow} />
-        <Resource name="tasks" list={MobileTasksList} />
+        {/* review R044/R105: no Atomic CRM pages on the phone either */}
+        <Resource name="contacts" />
+        <Resource name="companies" />
+        <Resource name="tasks" />
       </Admin>
     </PersistQueryClientProvider>
   );

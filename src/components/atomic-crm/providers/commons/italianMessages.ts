@@ -245,7 +245,7 @@ export const italianCrmMessages = {
         creating: "Creazione in corso...",
         initial_user_created: "Primo utente creato",
       },
-      welcome_title: "Dashboard Agenzia 346",
+      welcome_title: "Dashboard Punto Assicurativo",
     },
     common: {
       account_manager: "Referente",

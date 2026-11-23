@@ -65,7 +65,8 @@ export default defineConfig({
     keepNames: true,
   },
   build: {
-    sourcemap: true,
+    // review R022 (23/11/2026): no source maps on the public site, they carried the whole commented source
+    sourcemap: false,
   },
   resolve: {
     preserveSymlinks: true,

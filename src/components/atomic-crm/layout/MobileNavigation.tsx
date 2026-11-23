@@ -1,10 +1,4 @@
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
   FileText,
@@ -12,7 +6,6 @@ import {
   ListChecks,
   MoreHorizontal,
   Percent,
-  Plus,
   TrendingUp,
   Upload,
 } from "lucide-react";
@@ -36,11 +29,7 @@ const BREVE: Record<string, string> = {
   "/carica-file": "Carica",
 };
 import { useTranslate } from "ra-core";
-import { Link, matchPath, useLocation, useMatch } from "react-router";
-import { ContactCreateSheet } from "../contacts/ContactCreateSheet";
-import { useState } from "react";
-import { NoteCreateSheet } from "../notes/NoteCreateSheet";
-import { TaskCreateSheet } from "../tasks/TaskCreateSheet";
+import { Link, matchPath, useLocation } from "react-router";
 
 export const MobileNavigation = () => {
   const location = useLocation();
@@ -67,8 +56,8 @@ export const MobileNavigation = () => {
         paddingBottom: isPwa && isWebiOS ? 15 : undefined,
         // We use box-sizing: border-box, so the height contains the padding.
         // To actually increase the padding, we need to increase the height as well
-        height:
-          "calc(var(--spacing)) * 6" + (isPwa && isWebiOS ? " + 15px" : ""),
+        // review R105: the original "calc(var(--spacing)) * 6" was not valid CSS (ignored, h-14 applied)
+        height: isPwa && isWebiOS ? "calc(3.5rem + 15px)" : undefined,
       }}
     >
       <div className="flex justify-center px-1">
@@ -108,77 +97,12 @@ const NavigationButton = ({
   >
     <Link to={href}>
       <Icon className="size-6" />
-      <span className="text-[0.6rem] font-medium">{label}</span>
+      <span className="text-[0.7rem] leading-tight font-medium">{label}</span>
     </Link>
   </Button>
 );
 
 // non piu' nella barra (dashboard di agenzia), lasciato esportato per non toccare il resto
-export const CreateButton = () => {
-  const translate = useTranslate();
-  const contact_id = useMatch("/contacts/:id/*")?.params.id;
-  const [contactCreateOpen, setContactCreateOpen] = useState(false);
-  const [noteCreateOpen, setNoteCreateOpen] = useState(false);
-  const [taskCreateOpen, setTaskCreateOpen] = useState(false);
-
-  return (
-    <>
-      <ContactCreateSheet
-        open={contactCreateOpen}
-        onOpenChange={setContactCreateOpen}
-      />
-      <NoteCreateSheet
-        open={noteCreateOpen}
-        onOpenChange={setNoteCreateOpen}
-        contact_id={contact_id}
-      />
-      <TaskCreateSheet
-        open={taskCreateOpen}
-        onOpenChange={setTaskCreateOpen}
-        contact_id={contact_id}
-      />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="default"
-            size="icon"
-            className="h-16 w-16 rounded-full -mt-3"
-            aria-label={translate("ra.action.create")}
-          >
-            <Plus className="size-10" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem
-            className="h-12 px-4 text-base"
-            onSelect={() => {
-              setContactCreateOpen(true);
-            }}
-          >
-            {translate("resources.contacts.forcedCaseName")}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="h-12 px-4 text-base"
-            onSelect={() => {
-              setNoteCreateOpen(true);
-            }}
-          >
-            {translate("resources.notes.forcedCaseName")}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="h-12 px-4 text-base"
-            onSelect={() => {
-              setTaskCreateOpen(true);
-            }}
-          >
-            {translate("resources.tasks.forcedCaseName")}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </>
-  );
-};
-
 const SettingsButton = () => {
   const location = useLocation();
   const isActive = !!matchPath("/settings", location.pathname);

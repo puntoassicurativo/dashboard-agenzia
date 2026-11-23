@@ -162,12 +162,23 @@ export const useCarica = () => {
           upsert: false,
           contentType: file.type || "application/octet-stream",
         });
-      if (error) throw new Error(`${file.name}: ${error.message}`);
+      if (error)
+        throw new Error(`${file.name}: ${erroreInItaliano(error.message)}`);
       return nome;
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["caricamenti"] }),
   });
 };
+
+/** The storage messages that reach the page, in Italian (review R066). */
+export const erroreInItaliano = (msg: string): string =>
+  /already exists/i.test(msg)
+    ? "esiste già un file con questo nome in attesa: riprova tra un secondo o cambia il nome"
+    : /row-level security|not authorized|unauthorized/i.test(msg)
+      ? "non permesso: i file li caricano solo i soci"
+      : /failed to fetch|network/i.test(msg)
+        ? "connessione assente: riprova"
+        : msg;
 
 export const useTogli = () => {
   const qc = useQueryClient();
@@ -176,7 +187,7 @@ export const useTogli = () => {
       const { error } = await getSupabaseClient()
         .storage.from(BUCKET)
         .remove([`${DA}/${nome}`]);
-      if (error) throw error;
+      if (error) throw new Error(erroreInItaliano(error.message));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["caricamenti"] }),
   });

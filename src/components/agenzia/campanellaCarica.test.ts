@@ -6,8 +6,13 @@ import {
   perChiNonESocio,
   tutteLeNotifiche,
 } from "./Campanella";
-import { daScadenza } from "./CaricaFile";
-import { leggiNome, nomeOggetto, nomePulito } from "./caricamentiDati";
+import { daScadenza, statoDaIndirizzo } from "./CaricaFile";
+import {
+  erroreInItaliano,
+  leggiNome,
+  nomeOggetto,
+  nomePulito,
+} from "./caricamentiDati";
 import { mesiInLettere } from "./formato";
 import { DA_AMMINISTRAZIONE, DA_CONTABILITA } from "./Indirizzi";
 
@@ -181,5 +186,53 @@ describe("vecchi indirizzi", () => {
       soci: "/fatture?tipo=subagenti",
       tutti: "/da-fare?lista=decadi",
     });
+  });
+});
+
+describe("Carica file aperto da un link", () => {
+  const oggi = new Date(2030, 10, 23);
+  it("starts from the address and ignores a date that does not fit the type (review R066)", () => {
+    expect(statoDaIndirizzo("decade", "2030-11-20", oggi)).toEqual({
+      tipo: "decade",
+      sotto: "2030-11-20",
+    });
+    expect(statoDaIndirizzo("banca", "2030-11-20", oggi)).toEqual({
+      tipo: "banca",
+      sotto: "asti",
+    });
+    expect(statoDaIndirizzo("decade", "xyz", oggi)).toEqual({
+      tipo: "decade",
+      sotto: "",
+    });
+    expect(statoDaIndirizzo("fatture", "2030-13", oggi)).toEqual({
+      tipo: "fatture",
+      sotto: "2030-11",
+    });
+    expect(statoDaIndirizzo(null, null, oggi)).toEqual({
+      tipo: "decade",
+      sotto: "",
+    });
+  });
+
+  it("proposes Banco Desio when the deadline is about Desio", () => {
+    const s = daScadenza(
+      {
+        scadenza: "2030-11-05",
+        cosa: "Estratti conto di ottobre (Banco Desio) da scaricare",
+        stato: "in ritardo",
+        dettaglio: "",
+      },
+      "k",
+    );
+    expect(s?.sotto).toBe("desio");
+  });
+
+  it("says the known storage errors in Italian", () => {
+    expect(erroreInItaliano("The resource already exists")).toContain(
+      "esiste già",
+    );
+    expect(
+      erroreInItaliano("new row violates row-level security policy"),
+    ).toContain("solo i soci");
   });
 });

@@ -66,6 +66,7 @@ type FiscaleTasse = Fiscale & {
   per_mese: Record<string, { ritenuta?: number | null }>;
 };
 
+/** From February to June the run writes two rows: the current year and the year before (its balance is still due). */
 export const useBloccoTasse = () =>
   useQuery({
     queryKey: ["andamento", "tasse"],
@@ -75,11 +76,72 @@ export const useBloccoTasse = () =>
         .select("valori")
         .eq("tipo", "tasse")
         .order("mese", { ascending: false })
-        .limit(1);
+        .limit(2);
       if (error) throw error;
-      return (data?.[0]?.valori ?? null) as BloccoTasse | null;
+      const righe = (data ?? []).map((r) => r.valori as BloccoTasse);
+      return righe.length
+        ? { corrente: righe[0], prima: righe[1] ?? null }
+        : null;
     },
   });
+
+/** The year before, while its balance is still to pay: the agent's figures with their sums. */
+const TasseAnnoPrima = ({ b }: { b: BloccoTasse }) => {
+  const t = b.dicembre ?? b.fino_a_oggi;
+  if (!t) return null;
+  const fonte = `riga tasse ${b.anno} del giro (${FONTE})`;
+  const righe: [string, number, Spiegazione][] = [
+    [
+      "Tasse dell'anno",
+      t.totale,
+      {
+        titolo: `Tasse ${b.anno}`,
+        cosa: "I due soci e l'IRAP della società.",
+        calcolo: [
+          { voce: "Tasse di Fabio", valore: t.fabio },
+          { voce: "Tasse di Claudio", valore: t.claudio, segno: "+" },
+          { voce: "IRAP della SNC", valore: t.irap, segno: "+" },
+          { voce: "Totale", valore: t.totale, segno: "=" },
+        ],
+        fonte,
+      },
+    ],
+    [
+      "Resta da pagare (stima)",
+      t.resta,
+      {
+        titolo: `Resta da pagare per il ${b.anno}`,
+        cosa: `STIMA. ${b.nota_stima}`,
+        calcolo: [
+          { voce: "Tasse dell'anno", valore: t.totale },
+          { voce: "Ritenute già trattenute", valore: t.ritenute, segno: "-" },
+          { voce: "INPS fissi già pagati", valore: t.inps_pagati, segno: "-" },
+          { voce: "Resta da pagare", valore: t.resta, segno: "=" },
+        ],
+        fonte,
+      },
+    ],
+  ];
+  return (
+    <section className="rounded-lg border bg-card p-3 text-sm sm:p-4">
+      <h2 className="text-base font-semibold">
+        Tasse {b.anno}: il saldo si paga entro{" "}
+        {nomeMese(b.saldo_entro.slice(0, 7))}
+      </h2>
+      <ul className="mt-1">
+        {righe.map(([nome, v, sp]) => (
+          <li
+            key={nome}
+            className="flex justify-between border-t py-1.5 tabular-nums"
+          >
+            <span>{nome}</span>
+            <Spiegato spiega={sp}>{euro(v)}</Spiegato>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+};
 
 const FONTE =
   "utile fiscale del giro (estratti conto, foglio Saldi, partite BO); aliquote in Simula tasse; ritenute dai report BO; INPS dall'estratto Banco Desio";
@@ -377,7 +439,8 @@ export const TasseAnno = () => {
     return <div className="p-4 text-muted-foreground">Carico i dati...</div>;
   if (tasse.error) return <ErroreCaricamento errore={tasse.error} />;
   if (fiscale.error) return <ErroreCaricamento errore={fiscale.error} />;
-  const b = tasse.data;
+  const b = tasse.data?.corrente ?? null;
+  const prima = tasse.data?.prima ?? null;
   const f = fiscale.data as FiscaleTasse | null;
   if (!b || !f || !b.dicembre)
     return (
@@ -472,6 +535,7 @@ export const TasseAnno = () => {
         </Riquadro>
       </div>
       <Tabella b={b} f={f} />
+      {prima && <TasseAnnoPrima b={prima} />}
       <section className="rounded-lg border bg-card p-3 text-sm sm:p-4">
         <h2 className="text-base font-semibold">
           Perché è una stima: le rate già pagate allo studio

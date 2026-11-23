@@ -67,12 +67,40 @@ export const daScadenza = (s: Scadenza, chiave: string): Serve | null => {
   }
   const mese = s.cosa.match(/(\d{4}-\d{2})/)?.[1];
   if (/^Estratti conto di .* da scaricare/i.test(s.cosa))
-    return { ...base, tipo: "banca", sotto: "asti" };
+    return {
+      ...base,
+      tipo: "banca",
+      sotto: /desio/i.test(s.cosa) ? "desio" : "asti",
+    };
   if (/^Fatture di /i.test(s.cosa) && mese)
     return { ...base, tipo: "fatture", sotto: mese };
   if (/^(Estratti conto broker|Cedolini) di /i.test(s.cosa) && mese)
     return { ...base, tipo: "documenti", sotto: mese };
   return null;
+};
+
+const GIORNO = /^\d{4}-\d{2}-\d{2}$/;
+const MESE = /^\d{4}-(0[1-9]|1[0-2])$/;
+const giornoVero = (d: string): boolean =>
+  GIORNO.test(d) &&
+  !Number.isNaN(new Date(`${d}T12:00:00`).getTime()) &&
+  new Date(`${d}T12:00:00`).toISOString().slice(0, 10) === d;
+
+/** Type and folder from a link (bell, Cosa serve ancora): a date that does not fit the type is ignored (review R066). */
+export const statoDaIndirizzo = (
+  tipoUrl: string | null,
+  data: string | null,
+  oggi: Date,
+): { tipo: TipoFile; sotto: string } => {
+  const tipo: TipoFile =
+    tipoUrl && (TIPI as string[]).includes(tipoUrl)
+      ? (tipoUrl as TipoFile)
+      : "decade";
+  if (tipo === "decade")
+    return { tipo, sotto: data && giornoVero(data) ? data : "" };
+  if (tipo === "banca")
+    return { tipo, sotto: data === "desio" ? "desio" : "asti" };
+  return { tipo, sotto: data && MESE.test(data) ? data : meseDi(oggi) };
 };
 
 const Modulo = ({
@@ -93,7 +121,7 @@ const Modulo = ({
   const invia = async () => {
     const lista = Array.from(file.current?.files ?? []);
     if (!lista.length) {
-      setEsito(["Scegli prima uno o piu' file."]);
+      setEsito(["Scegli prima uno o più file."]);
       return;
     }
     const righe: string[] = [];
@@ -212,13 +240,13 @@ const Modulo = ({
         </span>
       )}
       <p className="mt-2 text-xs text-muted-foreground">
-        Vanno nella cartella {TIPI_FILE[tipo].cartella} del PC di Lorenzo al
-        prossimo giro del mattino. Restano privati: li vedono solo i soci.
+        Il giro del mattino li porta sul PC di Lorenzo, nella cartella giusta.
+        Restano privati: li vedono solo i soci.
       </p>
       {esito.length > 0 && (
         <ul className="mt-2 rounded border bg-muted/40 p-2">
-          {esito.map((r) => (
-            <li key={r}>{r}</li>
+          {esito.map((r, i) => (
+            <li key={`${i}-${r}`}>{r}</li>
           ))}
         </ul>
       )}
@@ -235,7 +263,13 @@ const descrivi = (c: Caricamento): string =>
         : "Banca di Asti"
       : `${TIPI_FILE[c.tipo].nome.split(" (")[0].toLowerCase()}, ${nomeMese(c.sotto)}`;
 
-const Caricati = ({ lista }: { lista: Caricamento[] }) => {
+const Caricati = ({
+  lista,
+  carico,
+}: {
+  lista: Caricamento[];
+  carico: boolean;
+}) => {
   const togli = useTogli();
   const attesa = lista.filter((c) => !c.scaricato);
   const fatti = lista.filter((c) => c.scaricato).slice(0, 15);
@@ -244,7 +278,13 @@ const Caricati = ({ lista }: { lista: Caricamento[] }) => {
       <h2 className="text-base font-semibold">
         In attesa del giro del mattino ({attesa.length})
       </h2>
-      {attesa.length === 0 && (
+      {carico && <p className="text-muted-foreground">Carico...</p>}
+      {togli.error && (
+        <p className="text-pa-rosso">
+          Non tolto: {(togli.error as Error).message}
+        </p>
+      )}
+      {!carico && attesa.length === 0 && (
         <p className="text-muted-foreground">Nessun file in attesa.</p>
       )}
       <ul>
@@ -259,17 +299,22 @@ const Caricati = ({ lista }: { lista: Caricamento[] }) => {
             </span>
             <button
               type="button"
-              className="rounded border px-2 py-0.5 text-xs"
+              className="min-h-9 rounded border px-3 py-1 text-xs"
               disabled={togli.isPending}
-              onClick={() => togli.mutate(c.nome)}
+              onClick={() => {
+                if (
+                  window.confirm(`Togliere ${c.file}? Il giro non lo porterà.`)
+                )
+                  togli.mutate(c.nome);
+              }}
             >
               Togli
             </button>
           </li>
         ))}
       </ul>
-      <h3 className="mt-3 font-semibold">Gia' portati nelle cartelle</h3>
-      {fatti.length === 0 && (
+      <h3 className="mt-3 font-semibold">Già portati nelle cartelle</h3>
+      {!carico && fatti.length === 0 && (
         <p className="text-muted-foreground">Ancora nessuno.</p>
       )}
       <ul>
@@ -297,7 +342,9 @@ const CosaServe = ({
   const domande = useBlocchi<unknown, { domande: DomandaStudio[] }>(
     "studio_domande",
   );
-  const oggi = new Date().toISOString().slice(0, 10);
+  // local date, not UTC: between midnight and 1-2 a.m. a deadline of today must not turn red (review R066)
+  const d = new Date();
+  const oggi = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const serve = (sca.data?.righe ?? [])
     .filter((r) => !r.fatto && !r.dati.stato.startsWith("fatto"))
     .map((r) => daScadenza(r.dati, r.chiave))
@@ -340,7 +387,7 @@ const CosaServe = ({
             ) : (
               <button
                 type="button"
-                className="rounded-md border border-pa-blu/40 px-3 py-1 text-xs font-medium text-pa-blu"
+                className="min-h-9 rounded-md border border-pa-blu/40 px-3 py-1.5 text-xs font-medium text-pa-blu"
                 onClick={() => scegli(s.tipo, s.sotto)}
               >
                 Carica
@@ -371,7 +418,7 @@ const CosaServe = ({
             </span>
             <button
               type="button"
-              className="rounded-md border border-pa-blu/40 px-3 py-1 text-xs font-medium text-pa-blu"
+              className="min-h-9 rounded-md border border-pa-blu/40 px-3 py-1.5 text-xs font-medium text-pa-blu"
               onClick={() => scegli("documenti", meseDi(new Date()))}
             >
               Carica la risposta
@@ -385,19 +432,32 @@ const CosaServe = ({
 
 const TIPI = Object.keys(TIPI_FILE) as TipoFile[];
 
+/** The address decides the form: a new link (e.g. from the bell while already here) remounts it (review R042). */
 export const CaricaFile = () => {
   const [parametri] = useSearchParams();
-  const daUrl = parametri.get("tipo") as TipoFile | null;
-  const iniziale: TipoFile = daUrl && TIPI.includes(daUrl) ? daUrl : "decade";
-  const [tipo, setTipo] = useState<TipoFile>(iniziale);
-  const [sotto, setSotto] = useState<string>(
-    parametri.get("data") ??
-      (iniziale === "banca"
-        ? "asti"
-        : iniziale === "decade"
-          ? ""
-          : meseDi(new Date())),
+  const tipoUrl = parametri.get("tipo");
+  const data = parametri.get("data");
+  return (
+    <CaricaFileModulo
+      key={`${tipoUrl}|${data}`}
+      tipoUrl={tipoUrl}
+      data={data}
+    />
   );
+};
+
+const CaricaFileModulo = ({
+  tipoUrl,
+  data,
+}: {
+  tipoUrl: string | null;
+  data: string | null;
+}) => {
+  const [iniziale] = useState(() =>
+    statoDaIndirizzo(tipoUrl, data, new Date()),
+  );
+  const [tipo, setTipo] = useState<TipoFile>(iniziale.tipo);
+  const [sotto, setSotto] = useState<string>(iniziale.sotto);
   const caricati = useCaricamenti();
   const scegli = (t: TipoFile, s: string) => {
     setTipo(t);
@@ -409,7 +469,7 @@ export const CaricaFile = () => {
   return (
     <Pagina
       titolo="Carica file"
-      sotto="Decade, estratti conto, fatture e documenti. Restano privati (solo i soci); il giro del mattino li porta nelle cartelle del PC di Lorenzo."
+      sotto="Decade, estratti conto, fatture e documenti. Restano privati (solo i soci); il giro del mattino li porta sul PC di Lorenzo."
     >
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="flex flex-col gap-4">
@@ -422,7 +482,7 @@ export const CaricaFile = () => {
           {caricati.error ? (
             <ErroreCaricamento errore={caricati.error} />
           ) : (
-            <Caricati lista={caricati.data ?? []} />
+            <Caricati lista={caricati.data ?? []} carico={caricati.isPending} />
           )}
         </div>
         <CosaServe scegli={scegli} caricati={caricati.data ?? []} />

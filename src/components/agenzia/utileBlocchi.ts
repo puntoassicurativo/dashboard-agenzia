@@ -51,6 +51,8 @@ export interface AlberoUtile {
   controllo: { chiude: boolean; errori: string[]; non_abbinato: number };
   mesi?: string[];
   in_attesa_222?: InAttesa[];
+  /** What the pending payments would change once confirmed (review R054). */
+  in_attesa_totali?: { cambia_utile: number; cambia_dove: number };
   /** First and last day covered by the bank statements in this row (a month can be incomplete, review R053). */
   dal?: string;
   al?: string;

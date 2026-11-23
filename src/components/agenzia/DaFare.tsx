@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+
 import { useRighe } from "./datiLati";
 import { dataIt, nomeMese } from "./formato";
 
@@ -93,7 +95,23 @@ export const cosaDaFare = (
   return out;
 };
 
-export const DaFare = ({ scadenze }: { scadenze: ScadenzaDaFare[] }) => {
+/** Where a line of "what needs doing now" opens (review R087). */
+export const doveVoce = (testo: string, socio: boolean): string =>
+  /decade del/.test(testo)
+    ? "/da-fare?lista=decadi"
+    : /fattura di/.test(testo)
+      ? socio
+        ? "/fatture?tipo=subagenti"
+        : "/da-fare?lista=decadi"
+      : "/da-fare?lista=scadenze";
+
+export const DaFare = ({
+  scadenze,
+  socio = false,
+}: {
+  scadenze: ScadenzaDaFare[];
+  socio?: boolean;
+}) => {
   const sub = useRighe<Decade>("SUB");
   const sft = useRighe<Fattura>("SFT");
   if (!sub.data || !sft.data) return null;
@@ -112,8 +130,15 @@ export const DaFare = ({ scadenze }: { scadenze: ScadenzaDaFare[] }) => {
         </div>
       ) : (
         <ul className="mt-1 list-disc pl-5 space-y-0.5">
-          {voci.map((v) => (
-            <li key={v}>{v}</li>
+          {voci.map((v, i) => (
+            <li key={`${i}-${v}`}>
+              <Link
+                to={doveVoce(v, socio)}
+                className="text-foreground underline decoration-pa-blu/40 underline-offset-2 hover:text-pa-blu"
+              >
+                {v}
+              </Link>
+            </li>
           ))}
         </ul>
       )}

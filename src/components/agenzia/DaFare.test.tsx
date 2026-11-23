@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { cosaDaFare } from "./DaFare";
+import { cosaDaFare, doveVoce } from "./DaFare";
+import { altreListe } from "./DaFarePagina";
 
 // Invented data: real agency figures never go into the repository.
 const oggi = new Date("2030-04-16T12:00:00");
@@ -71,5 +72,25 @@ describe("cosaDaFare", () => {
       `${new Date("2030-04-16T12:00:00").toLocaleDateString("it-IT")} F24 del 16 (da fare)`,
     ]);
     expect(voci.join(" ")).not.toMatch(/\d+,\d{2}/);
+  });
+});
+
+describe("Da fare per chi non e' socio", () => {
+  it("leaves the partners' lists out for a colleague (review R001)", () => {
+    expect(altreListe(false)).not.toContain("F");
+    expect(altreListe(false)).not.toContain("H");
+    expect(altreListe(true)).toEqual(expect.arrayContaining(["F", "H"]));
+  });
+
+  it("opens the right list from each line (review R087)", () => {
+    expect(
+      doveVoce("Schiva, decade del 20/11/2030: mail da mandare", false),
+    ).toBe("/da-fare?lista=decadi");
+    expect(
+      doveVoce("Camporosso: fattura di ottobre 2030 non ancora arrivata", true),
+    ).toBe("/fatture?tipo=subagenti");
+    expect(doveVoce("16/11/2030 F24 del 16 (in ritardo)", false)).toBe(
+      "/da-fare?lista=scadenze",
+    );
   });
 });

@@ -276,13 +276,19 @@ const useInfoModello = () =>
   });
 
 /** The three payments from the premium account with a cost proposal: shown "in attesa", confirmed only in the dropdown. */
-const InAttesa222 = ({ righe }: { righe: InAttesa[] }) => {
+const InAttesa222 = ({
+  righe,
+  totali,
+}: {
+  righe: InAttesa[];
+  totali?: { cambia_utile: number; cambia_dove: number };
+}) => {
   const info = useInfoModello();
   const totale = righe.reduce((s, r) => s + r.importo, 0);
   return (
     <section className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40 sm:p-4">
       <h2 className="text-base font-semibold">
-        In attesa di conferma: non sono nell'utile
+        In attesa di conferma: non sono nei conti
       </h2>
       <p className="mt-1 text-muted-foreground">
         Pagamenti partiti dal conto premi con una proposta di voce. Entrano nei
@@ -356,6 +362,12 @@ const InAttesa222 = ({ righe }: { righe: InAttesa[] }) => {
           {euro(totale)}
         </Spiegato>
       </div>
+      {totali && (
+        <div className="mt-1 text-muted-foreground tabular-nums">
+          Se confermati: {euro(totali.cambia_utile)} cambierebbero l'utile,{" "}
+          {euro(totali.cambia_dove)} solo dove è finito (prelievi dei soci).
+        </div>
+      )}
     </section>
   );
 };
@@ -525,7 +537,7 @@ export const UtileBlocchi = () => {
       )}
 
       {a.in_attesa_222 && a.in_attesa_222.length > 0 && (
-        <InAttesa222 righe={a.in_attesa_222} />
+        <InAttesa222 righe={a.in_attesa_222} totali={a.in_attesa_totali} />
       )}
 
       {(["entrato", "uscito", "dove_finito"] as const).map((l) => (

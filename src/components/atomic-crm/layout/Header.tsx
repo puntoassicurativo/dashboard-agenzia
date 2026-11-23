@@ -5,6 +5,7 @@ import { RefreshButton } from "@/components/admin/refresh-button";
 import { UserMenu } from "@/components/admin/user-menu";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
+import { Campanella } from "../../agenzia/Campanella";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { ImportPage } from "../misc/ImportPage";
 import { ChangelogPage } from "../misc/ChangelogPage";
@@ -26,6 +27,7 @@ const Header = () => {
           <h1 className="text-xl font-semibold">{title}</h1>
         </Link>
         <div className="flex items-center gap-1">
+          <Campanella />
           <RefreshButton />
           <UserMenu>
             <ProfileMenu />

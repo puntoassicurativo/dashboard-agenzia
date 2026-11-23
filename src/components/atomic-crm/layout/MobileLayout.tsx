@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Suspense, type ReactNode } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 
+import { Campanella } from "../../agenzia/Campanella";
 import { useConfigurationLoader } from "../root/useConfigurationLoader";
 import { MobileNavigation } from "./MobileNavigation";
 import { PullToRefresh } from "./PullToRefresh";
@@ -29,6 +30,7 @@ export const MobileLayout = ({ children }: { children: ReactNode }) => {
           />
           <span className="text-lg font-semibold">{title}</span>
         </Link>
+        <Campanella className="ml-auto" />
       </header>
       <div className="fixed inset-0 -z-10 bg-background" aria-hidden />
       <ErrorBoundary FallbackComponent={Error}>

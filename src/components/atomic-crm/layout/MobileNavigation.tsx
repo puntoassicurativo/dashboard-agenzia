@@ -9,12 +9,32 @@ import { cn } from "@/lib/utils";
 import {
   FileText,
   Home,
-  LayoutList,
+  ListChecks,
   MoreHorizontal,
+  Percent,
   Plus,
   TrendingUp,
+  Upload,
 } from "lucide-react";
 import { useAccessoUtile } from "../../agenzia/Andamento";
+import { VOCI_MENU } from "../../agenzia/MenuLato";
+
+const ICONE: Record<
+  string,
+  React.ComponentType<React.SVGProps<SVGSVGElement>>
+> = {
+  "/": Home,
+  "/fatture": FileText,
+  "/utile-costi": TrendingUp,
+  "/tasse": Percent,
+  "/carica-file": Upload,
+  "/da-fare": ListChecks,
+};
+/** Short labels: seven buttons share the width of a phone. */
+const BREVE: Record<string, string> = {
+  "/utile-costi": "Utile",
+  "/carica-file": "Carica",
+};
 import { useTranslate } from "ra-core";
 import { Link, matchPath, useLocation, useMatch } from "react-router";
 import { ContactCreateSheet } from "../contacts/ContactCreateSheet";
@@ -27,35 +47,8 @@ export const MobileNavigation = () => {
   const translate = useTranslate();
   const { data: vedeUtile } = useAccessoUtile();
 
-  let currentPath: string | boolean = "/";
-  if (
-    matchPath("/", location.pathname) ||
-    matchPath("/cruscotto/*", location.pathname)
-  ) {
-    currentPath = "/";
-  } else if (matchPath("/fatture", location.pathname)) {
-    currentPath = "/fatture";
-  } else if (
-    matchPath("/sezioni/*", location.pathname) ||
-    matchPath("/amministrazione/*", location.pathname)
-  ) {
-    currentPath = "/amministrazione";
-  } else if (
-    matchPath("/andamento", location.pathname) ||
-    matchPath("/contabilita/*", location.pathname)
-  ) {
-    currentPath = "/contabilita";
-  } else if (matchPath("/contacts/*", location.pathname)) {
-    currentPath = "/contacts";
-  } else if (matchPath("/companies/*", location.pathname)) {
-    currentPath = "/companies";
-  } else if (matchPath("/tasks/*", location.pathname)) {
-    currentPath = "/tasks";
-  } else if (matchPath("/deals/*", location.pathname)) {
-    currentPath = "/deals";
-  } else {
-    currentPath = false;
-  }
+  // 23/11/2026: the same entries as the side menu (MenuLato.tsx), partners' ones only for the partners
+  const voci = VOCI_MENU.filter((v) => !v.soloSoci || vedeUtile);
 
   // Check if the app is running as a PWA (standalone mode)
   const isPwa = window.matchMedia("(display-mode: standalone)").matches;
@@ -76,40 +69,17 @@ export const MobileNavigation = () => {
           "calc(var(--spacing)) * 6" + (isPwa && isWebiOS ? " + 15px" : ""),
       }}
     >
-      <div className="flex justify-center">
-        <>
-          {/* Agency dashboard: Cruscotto, Fatture (partners, since 22/11/2026), Contabilita' (partners),
-              Amministrazione, Impostazioni */}
+      <div className="flex justify-center px-1">
+        {voci.map((v) => (
           <NavigationButton
-            href="/"
-            Icon={Home}
-            label="Cruscotto"
-            isActive={currentPath === "/"}
+            key={v.to}
+            href={v.to}
+            Icon={ICONE[v.to] ?? Home}
+            label={BREVE[v.to] ?? v.titolo}
+            isActive={v.attiva(location.pathname)}
           />
-          {vedeUtile && (
-            <NavigationButton
-              href="/fatture"
-              Icon={FileText}
-              label="Fatture"
-              isActive={currentPath === "/fatture"}
-            />
-          )}
-          {vedeUtile && (
-            <NavigationButton
-              href="/contabilita"
-              Icon={TrendingUp}
-              label="Contabilità"
-              isActive={currentPath === "/contabilita"}
-            />
-          )}
-          <NavigationButton
-            href="/amministrazione"
-            Icon={LayoutList}
-            label="Amministraz."
-            isActive={currentPath === "/amministrazione"}
-          />
-          <SettingsButton />
-        </>
+        ))}
+        <SettingsButton />
       </div>
     </nav>
   );
@@ -130,7 +100,7 @@ const NavigationButton = ({
     asChild
     variant="ghost"
     className={cn(
-      "flex-col gap-1 h-auto py-2 px-1 rounded-md w-16",
+      "flex-col gap-1 h-auto py-2 px-0.5 rounded-md flex-1 min-w-0 max-w-16",
       isActive ? "text-pa-blu font-semibold" : "text-muted-foreground",
     )}
   >

@@ -165,7 +165,7 @@ const CAMPI_SOLDI = /premio|recuperare|recuperato|aumento|rca|provvigione|scarto
 const valore = (k: string, v: any) =>
   typeof v === "number" && CAMPI_SOLDI.test(k) ? `${numero(v)} €` : numero(v);
 
-const useInfo = () =>
+export const useInfo = () =>
   useQuery({
     queryKey: ["sezione_info"],
     queryFn: async () => {
@@ -357,9 +357,10 @@ const Scheda = ({ r, campoTitolo }: { r: Riga; campoTitolo: string }) => {
 };
 
 /** Pagina di una sezione. */
-export const SezionePage = () => {
+export const SezionePage = ({ sezione, dentro = false }: { sezione?: string; dentro?: boolean } = {}) => {
   const { lettera = "" } = useParams();
-  const s = lettera.toUpperCase();
+  // 23/11/2026: the Da fare page shows the lists inside its own blocks (sezione given, no page header)
+  const s = (sezione ?? lettera).toUpperCase();
   const meta = SEZIONI[s];
   const { data: info, isPending: infoInCarico } = useInfo();
   const [filtro, setFiltro] = useState<"da_fare" | "fatti" | "tutti" | "spente">("da_fare");
@@ -397,14 +398,16 @@ export const SezionePage = () => {
   const i = info?.[s];
   const riepilogo = i?.riepilogo ?? {};
   return (
-    <div className="flex flex-col gap-4 max-w-5xl mx-auto w-full px-4 pt-2 pb-28 md:px-0 md:pt-0 md:pb-8">
+    <div className={dentro ? "flex flex-col gap-4" : "flex flex-col gap-4 max-w-5xl mx-auto w-full px-4 pt-2 pb-28 md:px-0 md:pt-0 md:pb-8"}>
       <div>
-        <Link to="/sezioni" className="text-sm text-muted-foreground">
-          ← Sezioni
-        </Link>
-        <h1 className="text-xl font-semibold">
-          {s}. {meta.titolo}
-        </h1>
+        {!dentro && (
+          <>
+            <Link to="/da-fare" className="text-sm text-muted-foreground">
+              ← Da fare
+            </Link>
+            <h1 className="text-xl font-semibold">{meta.titolo}</h1>
+          </>
+        )}
         <p className="text-sm text-muted-foreground">{meta.descrizione}</p>
         <p className="text-xs text-muted-foreground mt-1">
           {i ? `Aggiornata il ${dataOra(i.aggiornato_il)}` : infoInCarico ? "..." : "Non ancora aggiornata"}, {meta.frequenza}.

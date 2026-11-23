@@ -87,7 +87,7 @@ const Blocco = ({
 const Freccia = () => (
   <div
     aria-hidden
-    className="flex items-center justify-center text-2xl text-pa-blu/60 lg:px-1"
+    className="-my-1 flex items-center justify-center text-lg leading-none text-pa-blu/60 lg:my-0 lg:px-1 lg:text-2xl"
   >
     <span className="lg:hidden">↓</span>
     <span className="hidden lg:inline">→</span>
@@ -124,7 +124,7 @@ const Ramo = ({
           aria-expanded={apribile ? aperto : undefined}
           onClick={() => setAperto(!aperto)}
           className={cn(
-            "min-w-0 flex-1 text-left",
+            "min-w-0 basis-full text-left sm:basis-0 sm:flex-1",
             apribile ? "cursor-pointer hover:text-pa-blu" : "cursor-default",
             profondita === 0 && "font-semibold",
           )}
@@ -140,19 +140,30 @@ const Ramo = ({
         {fatture && (
           <Link
             to={fatture}
-            className="text-xs font-medium text-pa-blu no-underline hover:underline"
+            className="ml-auto text-xs font-medium text-pa-blu no-underline hover:underline sm:ml-0"
           >
             Fatture ›
           </Link>
         )}
         {livello === "uscito" && n.perc != null && (
-          <span className="w-14 text-right text-sm tabular-nums text-muted-foreground">
+          <span
+            className={cn(
+              "w-14 text-right text-sm tabular-nums text-muted-foreground sm:ml-0",
+              !fatture && "ml-auto",
+            )}
+          >
             <Spiegato spiega={spiegaPerc(n, totaleUscito)}>
               {perc(n.perc)}
             </Spiegato>
           </span>
         )}
-        <span className="w-28 text-right tabular-nums">
+        <span
+          className={cn(
+            "w-28 text-right tabular-nums",
+            !fatture && !(livello === "uscito" && n.perc != null) && "ml-auto",
+            "sm:ml-0",
+          )}
+        >
           <Spiegato spiega={spiegaNodo(n, livello, periodo)}>
             {euro(n.importo)}
           </Spiegato>

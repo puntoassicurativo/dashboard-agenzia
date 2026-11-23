@@ -30,14 +30,19 @@ export const Sezione = ({
   id,
   titolo,
   riassunto,
+  apri = false,
   children,
 }: {
   id: string;
   titolo: string;
   riassunto?: ReactNode;
+  /** 23/11/2026: open on arrival (an old address that points to this block), whatever was remembered */
+  apri?: boolean;
   children: ReactNode;
 }) => {
-  const [aperta, setAperta] = useState<boolean>(() => !!leggiAperte()[id]);
+  const [aperta, setAperta] = useState<boolean>(
+    () => apri || !!leggiAperte()[id],
+  );
   return (
     <details
       open={aperta}

@@ -83,7 +83,7 @@ export const SchedaDomanda = ({
   );
 };
 
-export const ChiediCondizioni = () => {
+export const ChiediCondizioni = ({ dentro = false }: { dentro?: boolean }) => {
   const qc = useQueryClient();
   const [testo, setTesto] = useState("");
   const q = useDomande();
@@ -103,6 +103,7 @@ export const ChiediCondizioni = () => {
   const nonPronta = q.error != null;
   return (
     <Pagina
+      dentro={dentro}
       titolo="Chiedi alle condizioni"
       sotto="Domande su garanzie, franchigie, scoperti, massimali ed esclusioni delle polizze Vittoria. Risponde lo stesso esperto del bot Telegram, citando documento e pagina."
     >

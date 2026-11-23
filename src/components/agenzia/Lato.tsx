@@ -48,17 +48,26 @@ export const Lato = ({ base, voci }: { base: string; voci: VoceLato[] }) => {
 export const Pagina = ({
   titolo,
   sotto,
+  dentro = false,
   children,
 }: {
   titolo: string;
   sotto?: ReactNode;
+  /** 23/11/2026: inside another page (Da fare): no page margins, the title comes from the block around it. */
+  dentro?: boolean;
   children: ReactNode;
-}) => (
-  <div className="flex flex-col gap-4 max-w-6xl mx-auto w-full px-4 pb-28 md:px-0 md:pb-8">
-    <div>
-      <h1 className="text-xl font-semibold">{titolo}</h1>
-      {sotto && <p className="text-sm text-muted-foreground mt-1">{sotto}</p>}
+}) =>
+  dentro ? (
+    <div className="flex flex-col gap-3">
+      {sotto && <p className="text-sm text-muted-foreground">{sotto}</p>}
+      {children}
     </div>
-    {children}
-  </div>
-);
+  ) : (
+    <div className="flex flex-col gap-4 max-w-6xl mx-auto w-full px-4 pb-28 md:px-0 md:pb-8">
+      <div>
+        <h1 className="text-xl font-semibold">{titolo}</h1>
+        {sotto && <p className="text-sm text-muted-foreground mt-1">{sotto}</p>}
+      </div>
+      {children}
+    </div>
+  );

@@ -6,7 +6,7 @@ import type {
 } from "ra-core";
 import { CustomRoutes, localStorageStore, Resource } from "ra-core";
 import { useEffect, useMemo } from "react";
-import { Route } from "react-router";
+import { Navigate, Route } from "react-router";
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
@@ -26,14 +26,15 @@ import { SignupPage } from "../login/SignupPage";
 import { ConfirmationRequired } from "../login/ConfirmationRequired";
 import { ImportPage } from "../misc/ImportPage";
 import { ChangelogPage } from "../misc/ChangelogPage";
-import { SezioniPage, SezionePage } from "../../agenzia/Sezioni";
-import { AndamentoPage } from "../../agenzia/Andamento";
+import { CaricaFile } from "../../agenzia/CaricaFile";
+import { DaFarePagina } from "../../agenzia/DaFarePagina";
 import {
-  AmministrazionePage,
-  ContabilitaPage,
-  TassePage,
-  UtileCostiPage,
-} from "../../agenzia/Lati";
+  PerSoci,
+  VecchiaAmministrazione,
+  VecchiaContabilita,
+  VecchiaSezione,
+} from "../../agenzia/Indirizzi";
+import { TassePage, UtileCostiPage } from "../../agenzia/Lati";
 import { Fatture } from "../../agenzia/Fatture";
 import { CruscottoDettaglio } from "../../agenzia/CruscottoDettaglio";
 import {
@@ -240,12 +241,61 @@ export const CRM = ({
   );
 };
 
-// Pages of the simplification plan of 21/11/2026 (P4), the same on the computer and on the phone
+// Agency pages after the simplification plan of 21/11/2026 (P4), the same on the computer and on the phone.
+// Partners: Cruscotto, Fatture, Utile e costi, Tasse, Carica file; everyone: Da fare. Old addresses open the new pages.
 const rottePagineNuove = [
+  <Route
+    key="cd"
+    path="/cruscotto/:voce"
+    element={
+      <PerSoci>
+        <CruscottoDettaglio />
+      </PerSoci>
+    }
+  />,
+  <Route
+    key="f"
+    path="/fatture"
+    element={
+      <PerSoci>
+        <Fatture />
+      </PerSoci>
+    }
+  />,
   <Route key="uc" path="/utile-costi" element={<UtileCostiPage />} />,
   <Route key="ucv" path="/utile-costi/:voce" element={<UtileCostiPage />} />,
   <Route key="t" path="/tasse" element={<TassePage />} />,
   <Route key="tv" path="/tasse/:voce" element={<TassePage />} />,
+  <Route
+    key="cf"
+    path="/carica-file"
+    element={
+      <PerSoci>
+        <CaricaFile />
+      </PerSoci>
+    }
+  />,
+  <Route key="df" path="/da-fare" element={<DaFarePagina />} />,
+  // old addresses (the old pages stay in the code until the new ones are tried)
+  <Route
+    key="a"
+    path="/andamento"
+    element={<Navigate to="/utile-costi" replace />}
+  />,
+  <Route key="c" path="/contabilita" element={<VecchiaContabilita />} />,
+  <Route key="cv" path="/contabilita/:voce" element={<VecchiaContabilita />} />,
+  <Route
+    key="am"
+    path="/amministrazione"
+    element={<VecchiaAmministrazione />}
+  />,
+  <Route
+    key="amv"
+    path="/amministrazione/:voce"
+    element={<VecchiaAmministrazione />}
+  />,
+  <Route key="s" path="/sezioni" element={<VecchiaSezione />} />,
+  <Route key="sv" path="/sezioni/:lettera" element={<VecchiaSezione />} />,
 ];
 
 const DesktopAdmin = (
@@ -276,18 +326,6 @@ const DesktopAdmin = (
 
       <CustomRoutes>
         <Route path={ProfilePage.path} element={<ProfilePage />} />
-        <Route path="/sezioni" element={<SezioniPage />} />
-        <Route path="/sezioni/:lettera" element={<SezionePage />} />
-        <Route path="/andamento" element={<AndamentoPage />} />
-        <Route path="/fatture" element={<Fatture />} />
-        <Route path="/cruscotto/:voce" element={<CruscottoDettaglio />} />
-        <Route path="/contabilita" element={<ContabilitaPage />} />
-        <Route path="/contabilita/:voce" element={<ContabilitaPage />} />
-        <Route path="/amministrazione" element={<AmministrazionePage />} />
-        <Route
-          path="/amministrazione/:voce"
-          element={<AmministrazionePage />}
-        />
         {rottePagineNuove}
         <Route path={SettingsPage.path} element={<SettingsPage />} />
         <Route path={ImportPage.path} element={<ImportPage />} />
@@ -379,18 +417,6 @@ const MobileAdmin = (
           <Route
             path={SettingsPageMobile.path}
             element={<SettingsPageMobile />}
-          />
-          <Route path="/sezioni" element={<SezioniPage />} />
-          <Route path="/sezioni/:lettera" element={<SezionePage />} />
-          <Route path="/andamento" element={<AndamentoPage />} />
-          <Route path="/fatture" element={<Fatture />} />
-          <Route path="/cruscotto/:voce" element={<CruscottoDettaglio />} />
-          <Route path="/contabilita" element={<ContabilitaPage />} />
-          <Route path="/contabilita/:voce" element={<ContabilitaPage />} />
-          <Route path="/amministrazione" element={<AmministrazionePage />} />
-          <Route
-            path="/amministrazione/:voce"
-            element={<AmministrazionePage />}
           />
           {rottePagineNuove}
           <Route path={ChangelogPage.path} element={<ChangelogPage />} />

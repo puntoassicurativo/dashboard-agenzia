@@ -182,10 +182,17 @@ const SchedaDecade = ({ r, cifre }: SchedaDecadeProps) => {
   );
 };
 
-export const DecadiSubagenti = () => {
+export const DecadiSubagenti = ({
+  dentro = false,
+  senzaCifre = false,
+}: {
+  dentro?: boolean;
+  /** 23/11/2026, Da fare: only the state of each decade, no amounts even for the partners (they have them in Fatture). */
+  senzaCifre?: boolean;
+}) => {
   const q = useRighe<DatiDecade>("SUB");
   const accesso = useAccessoUtile();
-  const cifre = useCifreDecadi(accesso.data === true);
+  const cifre = useCifreDecadi(accesso.data === true && !senzaCifre);
   if (q.isPending)
     return <div className="p-4 text-muted-foreground">Carico i dati...</div>;
   if (q.error) return <ErroreCaricamento errore={q.error} />;
@@ -193,7 +200,11 @@ export const DecadiSubagenti = () => {
     .sort()
     .reverse();
   return (
-    <Pagina titolo="Decadi dei subagenti" sotto={q.data.info?.riepilogo.nota}>
+    <Pagina
+      titolo="Decadi dei subagenti"
+      sotto={senzaCifre ? undefined : q.data.info?.riepilogo.nota}
+      dentro={dentro}
+    >
       {decadi.length === 0 && (
         <div className="rounded-lg border bg-card p-4 text-sm">
           Nessuna decade ancora.
@@ -211,7 +222,7 @@ export const DecadiSubagenti = () => {
                 <SchedaDecade
                   key={r.chiave}
                   r={r}
-                  cifre={cifre.data?.[r.chiave]}
+                  cifre={senzaCifre ? undefined : cifre.data?.[r.chiave]}
                 />
               ))}
           </div>
@@ -286,7 +297,7 @@ interface DatiScadenza {
   dettaglio: string;
 }
 
-export const Scadenze = () => {
+export const Scadenze = ({ dentro = false }: { dentro?: boolean }) => {
   const q = useRighe<DatiScadenza>("SCA");
   if (q.isPending)
     return <div className="p-4 text-muted-foreground">Carico i dati...</div>;
@@ -317,8 +328,14 @@ export const Scadenze = () => {
     </div>
   );
   return (
-    <Pagina titolo="Scadenze" sotto={q.data.info?.riepilogo.nota}>
-      <DaFare scadenze={righe.filter((r) => !r.fatto).map((r) => r.dati)} />
+    <Pagina
+      titolo="Scadenze"
+      sotto={q.data.info?.riepilogo.nota}
+      dentro={dentro}
+    >
+      {!dentro && (
+        <DaFare scadenze={righe.filter((r) => !r.fatto).map((r) => r.dati)} />
+      )}
       <h2 className="text-base font-semibold">Da fare ({recenti.length})</h2>
       {recenti.map((r) => (
         <Riga key={r.chiave} r={r} />

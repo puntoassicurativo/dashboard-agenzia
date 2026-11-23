@@ -1,6 +1,6 @@
 {
-  "short_name": "Agenzia 346",
-  "name": "Dashboard Agenzia 346",
+  "short_name": "Punto Assicurativo",
+  "name": "Dashboard Punto Assicurativo",
   "icons": [
     {
       "src": "favicon.ico",
@@ -69,6 +69,6 @@
   "start_url": ".",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#000000",
+  "theme_color": "#1f3864",
   "background_color": "#ffffff"
 }

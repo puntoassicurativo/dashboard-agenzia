@@ -74,12 +74,19 @@ const Blocco = ({
     </div>
     {sotto && <div className="text-xs text-muted-foreground">{sotto}</div>}
     {verso && (
-      <a
-        href={`#${verso}`}
-        className="mt-auto text-sm font-medium text-pa-blu no-underline hover:underline"
+      // 23/11/2026: a button, not <a href="#...">: the dashboard routes on the hash, so "#blocco-uscito" opened
+      // a page that does not exist ("pagina non trovata"). Scroll to the panel instead.
+      <button
+        type="button"
+        onClick={() =>
+          document
+            .getElementById(verso)
+            ?.scrollIntoView({ behavior: "smooth", block: "start" })
+        }
+        className="mt-auto self-start text-sm font-medium text-pa-blu hover:underline"
       >
         Apri le voci ›
-      </a>
+      </button>
     )}
   </div>
 );

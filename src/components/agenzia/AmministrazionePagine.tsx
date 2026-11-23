@@ -182,6 +182,34 @@ const SchedaDecade = ({ r, cifre }: SchedaDecadeProps) => {
   );
 };
 
+/** Inside Da fare: the last two months of decades in view, the older ones behind one more click. */
+const DECADI_IN_VISTA = 6;
+
+const BloccoDecade = ({
+  dec,
+  aperto,
+  righe,
+  cifre,
+}: {
+  dec: string;
+  aperto: boolean;
+  righe: RigaLato<DatiDecade>[];
+  cifre: Record<string, CifreDecade> | undefined;
+}) => (
+  <details open={aperto} className="flex flex-col gap-2">
+    <summary className="cursor-pointer select-none text-base font-semibold py-1">
+      Decade del {dataIt(dec)}
+    </summary>
+    <div className="flex flex-col gap-2 mt-2">
+      {righe
+        .filter((r) => r.dati.decade === dec)
+        .map((r) => (
+          <SchedaDecade key={r.chiave} r={r} cifre={cifre?.[r.chiave]} />
+        ))}
+    </div>
+  </details>
+);
+
 export const DecadiSubagenti = ({
   dentro = false,
   senzaCifre = false,
@@ -210,24 +238,31 @@ export const DecadiSubagenti = ({
           Nessuna decade ancora.
         </div>
       )}
-      {decadi.map((dec, i) => (
-        <details key={dec} open={i === 0} className="flex flex-col gap-2">
-          <summary className="cursor-pointer select-none text-base font-semibold py-1">
-            Decade del {dataIt(dec)}
-          </summary>
-          <div className="flex flex-col gap-2 mt-2">
-            {q.data.righe
-              .filter((r) => r.dati.decade === dec)
-              .map((r) => (
-                <SchedaDecade
-                  key={r.chiave}
-                  r={r}
-                  cifre={senzaCifre ? undefined : cifre.data?.[r.chiave]}
-                />
-              ))}
-          </div>
-        </details>
+      {(dentro ? decadi.slice(0, DECADI_IN_VISTA) : decadi).map((dec, i) => (
+        <BloccoDecade
+          key={dec}
+          dec={dec}
+          aperto={i === 0}
+          righe={q.data.righe}
+          cifre={senzaCifre ? undefined : cifre.data}
+        />
       ))}
+      {dentro && decadi.length > DECADI_IN_VISTA && (
+        <details className="flex flex-col gap-2">
+          <summary className="cursor-pointer select-none py-1 text-base font-semibold text-muted-foreground">
+            Decadi piu' vecchie ({decadi.length - DECADI_IN_VISTA})
+          </summary>
+          {decadi.slice(DECADI_IN_VISTA).map((dec) => (
+            <BloccoDecade
+              key={dec}
+              dec={dec}
+              aperto={false}
+              righe={q.data.righe}
+              cifre={senzaCifre ? undefined : cifre.data}
+            />
+          ))}
+        </details>
+      )}
       <Aggiornato iso={q.data.info?.aggiornato_il} />
     </Pagina>
   );

@@ -26,6 +26,7 @@ import {
   spiegaDeltaMese,
   spiegaDeltaYtd,
   spiegaIncassi,
+  spiegaIncassiRamo,
   spiegaNuovePerse,
   spiegaObiettivo,
   spiegaPolizze,
@@ -553,8 +554,18 @@ export const RiquadroIncassi = ({ p }: { p: DatiCruscotto }) => {
         </Spiegato>
       </span>
       <span className="text-muted-foreground">
-        auto <Spiegato spiega={spiega}>{euro(inc.auto)}</Spiegato>, RE{" "}
-        <Spiegato spiega={spiega}>{euro(inc.re)}</Spiegato>
+        auto{" "}
+        <Spiegato
+          spiega={spiegaIncassiRamo(inc, "auto", p.annoN, p.data.data_dati)}
+        >
+          {euro(inc.auto)}
+        </Spiegato>
+        , RE{" "}
+        <Spiegato
+          spiega={spiegaIncassiRamo(inc, "re", p.annoN, p.data.data_dati)}
+        >
+          {euro(inc.re)}
+        </Spiegato>
       </span>
     </Riquadro>
   );

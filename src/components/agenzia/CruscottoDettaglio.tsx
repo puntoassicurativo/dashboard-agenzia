@@ -21,7 +21,7 @@ import { useBlocchi } from "./datiLati";
 import { ErroreCaricamento } from "./ErroreCaricamento";
 import {
   ConfrontoMesi,
-  nomeMese,
+  meseSolo,
   RiquadroProvvigioniMese,
 } from "./MeseCruscotto";
 import { RiquadroArea } from "./RiquadriVita";
@@ -34,7 +34,7 @@ import {
   spiegaDeltaYtd,
   spiegaIncassi,
   spiegaProvv,
-  spiegaUtileFiscale,
+  elencoMesiFiscale,
 } from "./spiegaCruscotto";
 import {
   type Area,
@@ -126,7 +126,7 @@ export const UtileFiscale = ({ p }: { p: DatiCruscotto }) => {
       {f.proiezione_passi && (
         <Lista elenco={elencoPassi(f.proiezione_passi, f.dal, f.al)} />
       )}
-      <Lista elenco={spiegaUtileFiscale(f).elenco} />
+      <Lista elenco={elencoMesiFiscale(f)} />
       <Lista elenco={spiegaConPrevisti(f)?.elenco} />
       <p className="text-sm">
         Per provare altri numeri:{" "}
@@ -243,7 +243,7 @@ export const CruscottoDettaglio = () => {
       )}
       {voce !== "utile-fiscale" && voce !== "delta" && (
         <p className="text-xs text-muted-foreground">
-          Mese scelto: {nomeMese(dati.m.mese)} {dati.m.mese.slice(0, 4)}.
+          Mese scelto: {meseSolo(dati.m.mese)} {dati.m.mese.slice(0, 4)}.
         </p>
       )}
     </div>

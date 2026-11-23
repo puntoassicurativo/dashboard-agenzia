@@ -8,7 +8,7 @@
 import { euro, euroSegno, Riquadro } from "./Riquadro";
 import { type Spiegazione, Spiegato } from "./Spiega";
 import {
-  nomeMese,
+  meseSolo,
   periodoAnnoPrima,
   spiegaDeltaMese,
   spiegaDifferenzaProvv,
@@ -66,7 +66,7 @@ export interface LineaProvv {
 export type { DeltaMese };
 
 // month names live in spiegaCruscotto.ts (no import cycle with the explanations); re-exported for the other pages
-export { nomeMese, periodoAnnoPrima };
+export { meseSolo, periodoAnnoPrima };
 const giorno = (iso: string): number => parseInt(iso.slice(8, 10), 10);
 const pct = (v: number | null): string =>
   v == null
@@ -89,7 +89,7 @@ export const ScegliMese = ({ mesi, scelto, onScegli }: ScegliMeseProps) => (
     >
       {[...mesi].reverse().map((m) => (
         <option key={m.mese} value={m.mese}>
-          {nomeMese(m.mese)} {m.mese.slice(0, 4)}
+          {meseSolo(m.mese)} {m.mese.slice(0, 4)}
           {m.parziale ? ` (fino al ${giorno(m.fino_al)})` : ""}
         </option>
       ))}
@@ -138,14 +138,14 @@ const AncoraDaFare = ({ m }: { m: MeseRiepilogo }) => {
   return (
     <div className="mt-1 flex flex-col gap-1">
       <span className="font-semibold text-foreground">
-        {nomeMese(m.mese)} {annoPrima} intero {euro(m.provv_ap_mese)}
+        {meseSolo(m.mese)} {annoPrima} intero {euro(m.provv_ap_mese)}
         {m.mancano > 0 ? ": mancano " : ": superato di "}
         <Forse spiega={spiegaMancano(m)}>{euro(Math.abs(m.mancano))}</Forse>
       </span>
       <div
         className="h-2.5 w-full rounded-full bg-muted overflow-hidden"
         role="img"
-        aria-label={`fatto il ${Math.round(quota * 100)}% del ${nomeMese(m.mese)} ${annoPrima}`}
+        aria-label={`fatto il ${Math.round(quota * 100)}% del ${meseSolo(m.mese)} ${annoPrima}`}
       >
         <div
           className="h-full rounded-full bg-pa-blu"
@@ -168,7 +168,7 @@ export const RiquadroProvvigioniMese = ({
   serie?: number[];
 }) => (
   <Riquadro
-    titolo={`Provvigioni di ${nomeMese(m.mese)}${m.parziale ? ` fino al ${giorno(m.fino_al)}` : ""}`}
+    titolo={`Provvigioni di ${meseSolo(m.mese)}${m.parziale ? ` fino al ${giorno(m.fino_al)}` : ""}`}
     valore={euro(m.provv)}
     colore={m.differenza >= 0 ? "verde" : "rosso"}
     serie={serie}
@@ -244,7 +244,7 @@ export const ConfrontoMesi = ({
             <th />
             {[a, b].map((m, i) => (
               <th key={i} className="py-1 pl-2 text-right font-medium">
-                {nomeMese(m.mese)} {m.mese.slice(0, 4)}
+                {meseSolo(m.mese)} {m.mese.slice(0, 4)}
                 {m.parziale ? ` (fino al ${giorno(m.fino_al)})` : ""}
               </th>
             ))}

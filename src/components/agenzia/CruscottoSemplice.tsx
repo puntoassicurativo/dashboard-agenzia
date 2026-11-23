@@ -14,7 +14,7 @@ import {
 } from "./Cruscotto";
 import { useBlocchi } from "./datiLati";
 import { ErroreCaricamento } from "./ErroreCaricamento";
-import { nomeMese, ScegliMese } from "./MeseCruscotto";
+import { meseSolo, ScegliMese } from "./MeseCruscotto";
 import { type Colore, euro, euroSegno, Riquadro, Variazione } from "./Riquadro";
 import type { Spiegazione } from "./Spiega";
 import {
@@ -98,7 +98,7 @@ const Tessere = ({ p, ricerca }: { p: DatiCruscotto; ricerca: string }) => {
       <Tessera
         voce="provvigioni"
         ricerca={ricerca}
-        titolo={`Provvigioni di ${nomeMese(m.mese)}${m.parziale ? ` fino al ${giorno}` : ""}`}
+        titolo={`Provvigioni di ${meseSolo(m.mese)}${m.parziale ? ` fino al ${giorno}` : ""}`}
         valore={euro(m.provv)}
         spiega={spiegaProvv(m)}
         colore={m.differenza >= 0 ? "verde" : "rosso"}

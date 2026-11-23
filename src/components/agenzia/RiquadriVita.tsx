@@ -3,7 +3,7 @@
  * andamento_blocchi rows are protected by RLS, for everyone else the query is empty and nothing is shown.
  */
 import { useBlocchi } from "./datiLati";
-import { nomeMese } from "./MeseCruscotto";
+import { meseSolo } from "./MeseCruscotto";
 import { euro, euroSegno, Riquadro } from "./Riquadro";
 import { Spiegato } from "./Spiega";
 import {
@@ -11,6 +11,7 @@ import {
   spiegaNuovaProduzione,
   spiegaVitaAnnoPrima,
   spiegaVitaMese,
+  spiegaVitaMeseAnnoPrima,
   spiegaVitaYtd,
   type VitaInfo,
   type VitaMese,
@@ -61,12 +62,12 @@ export const RiquadroArea = ({
       </span>
       {datiMese && (
         <span className="text-muted-foreground">
-          {nomeMese(mese)}:{" "}
+          {meseSolo(mese)}:{" "}
           <Spiegato spiega={spiegaVitaMese(mese, datiMese, area)}>
             {euro(datiMese.ac[area])}
           </Spiegato>{" "}
           ({annoPrima}:{" "}
-          <Spiegato spiega={spiegaVitaMese(mese, datiMese, area)}>
+          <Spiegato spiega={spiegaVitaMeseAnnoPrima(mese, datiMese, area)}>
             {euro(datiMese.ap[area])}
           </Spiegato>
           )
@@ -74,7 +75,7 @@ export const RiquadroArea = ({
       )}
       {np && info.np_ytd && (
         <span className="text-muted-foreground hidden sm:block">
-          nuova produzione a {nomeMese(info.np_fino_a ?? "")}:{" "}
+          nuova produzione a {meseSolo(info.np_fino_a ?? "")}:{" "}
           <Spiegato spiega={np}>{euro(info.np_ytd.ac.totale)}</Spiegato>
         </span>
       )}

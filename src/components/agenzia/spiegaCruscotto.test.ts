@@ -3,15 +3,23 @@ import { describe, expect, it } from "vitest";
 import type { MeseRiepilogo } from "./MeseCruscotto";
 import type { Cella, Spiegazione } from "./Spiega";
 import {
+  elencoMesiFiscale,
   elencoPassi,
+  type FiscaleCruscotto,
   type Incassi,
   type PassiProiezione,
   spiegaAvanzo,
   spiegaDeltaYtd,
   spiegaIncassi,
+  spiegaIncassiRamo,
   spiegaProvv,
+  spiegaUtileFiscale,
 } from "./spiegaCruscotto";
-import { spiegaVitaMese, type VitaMese } from "./spiegaVita";
+import {
+  spiegaVitaMese,
+  spiegaVitaMeseAnnoPrima,
+  type VitaMese,
+} from "./spiegaVita";
 
 // Invented data: real agency figures never go into the repository.
 const delta = (np: number, ann: number, npP: number, annP: number) => ({
@@ -114,6 +122,13 @@ describe("explanations of the main page", () => {
     expect(colonna(parti2030, 1)).toBeCloseTo(1530, 2);
     expect(colonna(parti2030, 2)).toBeCloseTo(490, 2);
     expect(righe.at(-1)).toEqual(["= 2029, stesso periodo", 900, 300, 1200]);
+    // each line opens its own calculation, ending on the line's number (review R016d)
+    for (const ramo of ["auto", "re"] as const) {
+      const r = spiegaIncassiRamo(inc, ramo, 2030, "2030-02-10").calcolo ?? [];
+      expect(r.at(-1)?.valore).toBe(inc[ramo]);
+      const parti = r.filter((x) => x.segno !== "=");
+      expect(parti.reduce((t, x) => t + Number(x.valore), 0)).toBe(inc[ramo]);
+    }
   });
 
   it("delta from January: the months add up and a one-cent rounding is said", () => {
@@ -190,6 +205,11 @@ describe("explanations of the main page", () => {
     expect(s.elenco?.righe).toHaveLength(3);
     expect(s.elenco?.totale).toEqual(["Totale", 450, 80]);
     expect(s.elenco?.nota).toBe("Totale dei prodotti = numero del riquadro.");
+    // the figure of the year before opens the year before, not the current year (review R016e)
+    const ap = spiegaVitaMeseAnnoPrima("2030-01", v, "prot");
+    expect(ap.titolo).toBe("Protezione gennaio 2029");
+    expect(ap.calcolo?.find((r) => r.segno === "=")?.valore).toBe(80);
+    expect(ap.elenco?.totale).toEqual(["Totale", 80, 450]);
   });
 
   it("surplus: balance before + entries - exits = today's balance, and a sheet typo is said", () => {
@@ -280,4 +300,60 @@ describe("explanations of the main page", () => {
     );
     expect(deducibili).toBe(valore("= previsto", 2));
   });
+
+  it("the list behind the projected taxable profit ends on that number, not on January-to-date (review R016c)", () => {
+    const f = fiscaleDiProva();
+    const s = spiegaUtileFiscale(f);
+    expect(s.elenco?.totale?.at(-1)).toBe(f.proiezione.utile_fiscale);
+  });
+
+  it("the month-by-month list keeps ARAG out of the profit column (review R051)", () => {
+    const e = elencoMesiFiscale(fiscaleDiProva());
+    // profit column = the months only (same as Utile e costi); ARAG only in the taxable profit column
+    expect(e.totale?.[2]).toBe(30);
+    expect(e.totale?.[3]).toBe(41);
+    const riga = e.righe.find((r) =>
+      String(r[0]).startsWith("Provvigioni ARAG"),
+    );
+    expect(riga?.[2]).toBeNull();
+  });
 });
+
+function fiscaleDiProva(): FiscaleCruscotto {
+  return {
+    dal: "2030-01",
+    al: "2030-02",
+    mesi_usati: 2,
+    soglia: 100,
+    da_gennaio: { ricavi: 100, deducibili: 59, utile_fiscale: 41 },
+    proiezione: { ricavi: 600, deducibili: 354, utile_fiscale: 246 },
+    per_mese: {
+      "2030-01": { utile: 10, provvigioni: 50, utile_fiscale: 15 },
+      "2030-02": { utile: 20, provvigioni: 50, utile_fiscale: 25 },
+    },
+    proiezione_passi: {
+      mesi: 2,
+      ricavi: {
+        da_gennaio: 100,
+        arag: 1,
+        una_tantum: 0,
+        di_cui_incentivi_marzo: 0,
+        ricorrenti: 99,
+        al_mese: 49.5,
+        per_12: 594,
+        arag_anno: 6,
+        totale: 600,
+      },
+      deducibili: {
+        da_gennaio: 59,
+        mutui_pagati: 0,
+        una_tantum: 0,
+        ricorrenti: 59,
+        al_mese: 29.5,
+        per_12: 354,
+        mutui_resto_anno: 0,
+        totale: 354,
+      },
+    },
+  };
+}

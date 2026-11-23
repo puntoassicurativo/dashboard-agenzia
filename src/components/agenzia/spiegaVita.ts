@@ -4,7 +4,8 @@
  * it comes from, and open the products behind it.
  */
 import type { Cella, RigaCalcolo, Spiegazione } from "./Spiega";
-import { dataBreve, nomeMese, pct, tondo } from "./spiegaCruscotto";
+import { numero } from "./formato";
+import { dataBreve, meseSolo, pct, tondo } from "./spiegaCruscotto";
 
 export interface TotaliVita {
   annui: number;
@@ -73,7 +74,7 @@ const somma = (v: number[]): number => tondo(v.reduce((a, b) => a + b, 0));
 const calcoloVita = (t: TotaliVita): RigaCalcolo[] => [
   { voce: "Premi annui", valore: t.annui, segno: "+" },
   {
-    voce: `Premi unici (di cui versamenti aggiuntivi ${t.aggiuntivi.toLocaleString("it-IT", { minimumFractionDigits: 2 })})`,
+    voce: `Premi unici (di cui versamenti aggiuntivi ${numero(t.aggiuntivi, 2)})`,
     valore: t.unici,
     segno: "+",
   },
@@ -143,7 +144,7 @@ const elencoProdotti = (
     totale: ["Totale", sAc, sAp],
     nota: ok
       ? "Totale dei prodotti = numero del riquadro."
-      : `Attenzione: il totale dei prodotti (${sAc.toLocaleString("it-IT", { minimumFractionDigits: 2 })}) non e' uguale al numero del riquadro (${totAc.toLocaleString("it-IT", { minimumFractionDigits: 2 })}).`,
+      : `Attenzione: il totale dei prodotti (${numero(sAc, 2)}) non e' uguale al numero del riquadro (${numero(totAc, 2)}).`,
   };
 };
 
@@ -180,13 +181,42 @@ export const spiegaVitaAnnoPrima = (
   calcolo: [
     ...calcolo(area, info.ytd_ap, info.prodotti?.ap),
     {
-      voce: `Differenza: ${info.ytd[area].toLocaleString("it-IT", { minimumFractionDigits: 2 })} meno questo`,
+      voce: `Differenza: ${numero(info.ytd[area], 2)} meno questo`,
       valore: info.diff[area],
     },
     { voce: "In percentuale", valore: pct(info.cresc[area]) },
   ],
   fonte: FONTE,
 });
+
+/** The same month of the year before, with its own products (review R016e). */
+export const spiegaVitaMeseAnnoPrima = (
+  mese: string,
+  v: VitaMese,
+  area: Area,
+): Spiegazione => {
+  const a = parseInt(mese.slice(0, 4), 10) - 1;
+  const periodo = v.parziale
+    ? `dal 1 al ${parseInt(v.fino_al.slice(8, 10), 10)} ${meseSolo(mese)}`
+    : meseSolo(mese);
+  return {
+    titolo: `${nome(area)} ${periodo} ${a}`,
+    cosa: COSA[area],
+    calcolo: calcolo(area, v.ap, v.prodotti?.ap),
+    fonte: FONTE,
+    elenco: v.prodotti
+      ? elencoProdotti(
+          area,
+          `${nome(area)} ${periodo} ${a}, prodotto per prodotto`,
+          v.prodotti.ap,
+          v.prodotti.ac,
+          v.ap[area],
+          v.ac[area],
+          [String(a), String(a + 1)],
+        )
+      : undefined,
+  };
+};
 
 export const spiegaVitaMese = (
   mese: string,
@@ -195,8 +225,8 @@ export const spiegaVitaMese = (
 ): Spiegazione => {
   const a = parseInt(mese.slice(0, 4), 10);
   const periodo = v.parziale
-    ? `dal 1 al ${parseInt(v.fino_al.slice(8, 10), 10)} ${nomeMese(mese)}`
-    : nomeMese(mese);
+    ? `dal 1 al ${parseInt(v.fino_al.slice(8, 10), 10)} ${meseSolo(mese)}`
+    : meseSolo(mese);
   return {
     titolo: `${nome(area)} ${periodo} ${a}`,
     cosa: COSA[area],
@@ -225,7 +255,7 @@ export const spiegaNuovaProduzione = (
 ): Spiegazione | undefined => {
   const np = info.np_ytd;
   if (!np || !info.np_fino_a) return undefined;
-  const fino = nomeMese(info.np_fino_a);
+  const fino = meseSolo(info.np_fino_a);
   return {
     titolo: `Nuova produzione vita gennaio-${fino}`,
     cosa: "Quello che misura la compagnia per la vita: premi delle polizze nuove (annui), premi unici e versamenti aggiuntivi, solo per i mesi chiusi. Non sono incassi.",

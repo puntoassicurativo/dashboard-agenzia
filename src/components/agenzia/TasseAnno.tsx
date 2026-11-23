@@ -13,6 +13,7 @@ import { type Fiscale, useBloccoFiscale } from "./Fiscale";
 import { dataIt, euro, nomeMese } from "./formato";
 import { Pagina } from "./Lato";
 import { Riquadro } from "./Riquadro";
+import { IRAP_RATE } from "./tasse";
 import {
   type Cella,
   type RigaCalcolo,
@@ -90,7 +91,7 @@ const pct = (v: number) =>
 type Colonna = "fino_a_oggi" | "dicembre";
 
 /** The explanation of one cell of the table (same figures as the agent, never recomputed differently). */
-const spiegaCella = (
+export const spiegaCella = (
   riga: keyof RigheTasse,
   col: Colonna,
   t: RigheTasse,
@@ -115,22 +116,26 @@ const spiegaCella = (
     };
   if (riga === "fabio" || riga === "claudio") {
     const chi = riga === "fabio" ? "Fabio" : "Claudio";
-    const centesimo = c ? tondo(t[riga] - c.tasse_socio) : 0;
+    // the cent is measured against the three rows shown, so that they add up to the number (review R016a/R048)
+    const centesimo = c
+      ? tondo(t[riga] - (c.inps_socio + c.irpef_socio + c.addizionali_socio))
+      : 0;
     return {
       titolo: `Tasse di ${chi}, ${titolo}`,
-      cosa: `Meta' dell'utile fiscale a testa: contributi INPS, IRPEF e addizionali di ${chi}. Nessun altro reddito dei soci: se ne hanno altri, l'IRPEF sale.`,
+      cosa: c
+        ? `Sulla metà dell'utile fiscale (${euro(c.quota_socio)}): contributi INPS, IRPEF e addizionali di ${chi}. Nessun altro reddito dei soci: se ne hanno altri, l'IRPEF sale.`
+        : `Contributi INPS, IRPEF e addizionali di ${chi}.`,
       calcolo: c
         ? [
-            { voce: "Meta' dell'utile fiscale", valore: c.quota_socio },
             { voce: "INPS commercianti", valore: c.inps_socio },
             { voce: "IRPEF", valore: c.irpef_socio, segno: "+" },
             { voce: "Addizionali", valore: c.addizionali_socio, segno: "+" },
             ...(centesimo
               ? [
                   {
-                    voce: "centesimo dell'arrotondamento",
-                    valore: centesimo,
-                    segno: "+" as const,
+                    voce: "arrotondamento al centesimo",
+                    valore: Math.abs(centesimo),
+                    segno: centesimo < 0 ? ("-" as const) : ("+" as const),
                   },
                 ]
               : []),
@@ -143,10 +148,10 @@ const spiegaCella = (
   if (riga === "irap")
     return {
       titolo: `IRAP della SNC, ${titolo}`,
-      cosa: "Imposta regionale della societa', sull'utile fiscale.",
+      cosa: "Imposta regionale della società, sull'utile fiscale.",
       calcolo: [
         { voce: "Utile fiscale", valore: t.utile_fiscale },
-        { voce: "aliquota", valore: "3,9%", segno: "x" },
+        { voce: "aliquota", valore: pct(IRAP_RATE), segno: "x" },
         { voce: "IRAP", valore: t.irap, segno: "=" },
       ],
       fonte: FONTE,
@@ -154,7 +159,7 @@ const spiegaCella = (
   if (riga === "totale")
     return {
       titolo: `Tasse dell'anno, ${titolo}`,
-      cosa: "Tutte le tasse generate dall'utile: i due soci e la societa'.",
+      cosa: "Tutte le tasse generate dall'utile: i due soci e la società.",
       calcolo: [
         { voce: "Tasse di Fabio", valore: t.fabio },
         { voce: "Tasse di Claudio", valore: t.claudio, segno: "+" },
@@ -170,7 +175,7 @@ const spiegaCella = (
       col === "fino_a_oggi" || !p
         ? [
             {
-              voce: `Ritenuta della compagnia (codice 5601), ${mesi.length} mesi`,
+              voce: `Ritenuta della compagnia (codice 5601), ${p?.mesi_con_ritenuta ?? mesi.length} mesi`,
               valore: p?.compagnia_da_gennaio ?? t.ritenute,
             },
             ...(p?.arag
@@ -213,31 +218,46 @@ const spiegaCella = (
               : []),
             { voce: "Ritenute previste", valore: t.ritenute, segno: "=" },
           ];
+    const daGennaio = tondo((p?.compagnia_da_gennaio ?? 0) + (p?.arag ?? 0));
+    const righeMesi: Cella[][] = [
+      ...mesi.map((m): Cella[] => [
+        nomeMese(m),
+        f.per_mese[m].ritenuta ?? "non ancora nota",
+      ]),
+      ...(p?.arag ? [["ARAG", p.arag] as Cella[]] : []),
+    ];
+    // the December column: the months so far, then the months still to come estimated, total = the December number
+    // (review R016b/R056)
+    const aDicembre = col === "dicembre" && !!p;
     return {
-      titolo: `Ritenute gia' trattenute, ${titolo}`,
-      cosa: "Imposte gia' versate per conto dei soci: la compagnia e ARAG le trattengono sulle provvigioni. Si tolgono dalle tasse.",
+      titolo: `Ritenute già trattenute, ${titolo}`,
+      cosa: "Imposte già versate per conto dei soci: la compagnia e ARAG le trattengono sulle provvigioni. Si tolgono dalle tasse.",
       calcolo,
       fonte: "Prospetto Ritenute dei report BO; ARAG dalla sua comunicazione",
       elenco: {
-        titolo: "Ritenuta della compagnia mese per mese",
+        titolo: aDicembre
+          ? "Ritenute: i mesi passati e quelli previsti fino a dicembre"
+          : "Ritenuta della compagnia mese per mese",
         colonne: ["Mese", "Ritenuta"],
-        righe: [
-          ...mesi.map((m): Cella[] => [
-            nomeMese(m),
-            f.per_mese[m].ritenuta ?? "non ancora nota",
-          ]),
-          ...(p?.arag ? [["ARAG", p.arag] as Cella[]] : []),
-        ],
-        totale: [
-          "Da gennaio",
-          tondo((p?.compagnia_da_gennaio ?? 0) + (p?.arag ?? 0)),
-        ],
+        righe: aDicembre
+          ? [
+              ...righeMesi,
+              ["= Da gennaio", daGennaio],
+              [
+                "Mesi che mancano a dicembre (stima: media dei mesi per 12)",
+                tondo(t.ritenute - daGennaio),
+              ],
+            ]
+          : righeMesi,
+        totale: aDicembre
+          ? ["A dicembre (previsto)", t.ritenute]
+          : ["Da gennaio", daGennaio],
       },
     };
   }
   if (riga === "inps_pagati")
     return {
-      titolo: "Contributi INPS fissi gia' pagati",
+      titolo: "Contributi INPS fissi già pagati",
       cosa: b.nota_inps,
       calcolo: [
         ...b.inps_versati.map(
@@ -249,7 +269,8 @@ const spiegaCella = (
         ),
         { voce: "Totale", valore: t.inps_pagati, segno: "=" },
       ],
-      fonte: "estratto conto Banco Desio 211900, bonifici allo studio",
+      fonte:
+        "estratto conto Banco Desio, conto gestionale: bonifici allo studio",
       elenco: {
         titolo: "Rate INPS pagate allo studio",
         colonne: ["Data", "Importo"],
@@ -262,8 +283,8 @@ const spiegaCella = (
     cosa: `STIMA. ${b.nota_stima}`,
     calcolo: [
       { voce: "Tasse dell'anno", valore: t.totale },
-      { voce: "Ritenute gia' trattenute", valore: t.ritenute, segno: "-" },
-      { voce: "INPS fissi gia' pagati", valore: t.inps_pagati, segno: "-" },
+      { voce: "Ritenute già trattenute", valore: t.ritenute, segno: "-" },
+      { voce: "INPS fissi già pagati", valore: t.inps_pagati, segno: "-" },
       { voce: "Resta da pagare", valore: t.resta, segno: "=" },
     ],
     fonte: FONTE,
@@ -276,8 +297,8 @@ const RIGHE: [keyof RigheTasse, string, boolean?][] = [
   ["claudio", "Tasse di Claudio"],
   ["irap", "IRAP della SNC"],
   ["totale", "= Tasse dell'anno", true],
-  ["ritenute", "meno ritenute gia' trattenute"],
-  ["inps_pagati", "meno contributi INPS fissi gia' pagati"],
+  ["ritenute", "meno ritenute già trattenute"],
+  ["inps_pagati", "meno contributi INPS fissi già pagati"],
   ["resta", "= Resta da pagare (stima)", true],
 ];
 
@@ -391,7 +412,20 @@ export const TasseAnno = () => {
           }}
         >
           <span className="text-muted-foreground">
-            tasse previste {euro(dic.totale, 0)} diviso 12
+            tasse previste{" "}
+            <Spiegato
+              spiega={spiegaCella(
+                "totale",
+                "dicembre",
+                dic,
+                f,
+                b,
+                `a dicembre ${b.anno}`,
+              )}
+            >
+              {euro(dic.totale, 0)}
+            </Spiegato>{" "}
+            diviso 12
           </span>
         </Riquadro>
         <Riquadro
@@ -420,24 +454,48 @@ export const TasseAnno = () => {
             STIMA
           </span>
           <span className="text-muted-foreground">
-            resta {euro(dic.resta, 0)} in {b.mesi_al_saldo} mesi
+            resta{" "}
+            <Spiegato
+              spiega={spiegaCella(
+                "resta",
+                "dicembre",
+                dic,
+                f,
+                b,
+                `a dicembre ${b.anno}`,
+              )}
+            >
+              {euro(dic.resta, 0)}
+            </Spiegato>{" "}
+            in {b.mesi_al_saldo} mesi
           </span>
         </Riquadro>
       </div>
       <Tabella b={b} f={f} />
       <section className="rounded-lg border bg-card p-3 text-sm sm:p-4">
         <h2 className="text-base font-semibold">
-          Perche' e' una stima: le rate gia' pagate allo studio
+          Perché è una stima: le rate già pagate allo studio
         </h2>
         <p className="mt-1 text-muted-foreground">{b.nota_stima}</p>
         <ul className="mt-2">
-          {b.rate_imposte.map((r) => (
+          {b.rate_imposte.map((r, i) => (
             <li
-              key={r.data}
+              key={`${r.data}-${i}`}
               className="flex justify-between border-t py-1 tabular-nums"
             >
               <span>Rata imposte del {dataIt(r.data)}</span>
-              <span>{euro(r.importo)}</span>
+              <Spiegato
+                spiega={{
+                  titolo: `Rata imposte del ${dataIt(r.data)}`,
+                  cosa: "Bonifico allo studio per le imposte dei soci (saldo dell'anno prima e acconto insieme).",
+                  calcolo: [
+                    { voce: "Bonifico", valore: r.importo, segno: "=" },
+                  ],
+                  fonte: "estratto conto Banco Desio, conto gestionale",
+                }}
+              >
+                {euro(r.importo)}
+              </Spiegato>
             </li>
           ))}
           <li className="flex justify-between border-t py-1 font-semibold tabular-nums">
@@ -456,7 +514,7 @@ export const TasseAnno = () => {
                   ),
                   { voce: "Totale", valore: b.rate_imposte_totale, segno: "=" },
                 ],
-                fonte: "estratto conto Banco Desio 211900",
+                fonte: "estratto conto Banco Desio, conto gestionale",
               }}
             >
               {euro(b.rate_imposte_totale)}
@@ -473,7 +531,8 @@ export const TasseAnno = () => {
       </section>
       <p className="text-xs text-muted-foreground">
         Calcolato il {dataIt(b.calcolato_il)} sui mesi completi fino a{" "}
-        {b.al ? nomeMese(b.al) : "n.d."}. IRAP {pct(0.039)} dell'utile fiscale.
+        {b.al ? nomeMese(b.al) : "n.d."}. IRAP {pct(IRAP_RATE)} dell'utile
+        fiscale.
       </p>
     </Pagina>
   );

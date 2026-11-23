@@ -4,31 +4,15 @@
  * up to the number on the page.
  */
 import type { DeltaMese, LineaProvv, MeseRiepilogo } from "./MeseCruscotto";
-import type { Cella, RigaCalcolo, Spiegazione } from "./Spiega";
-
-const MESI = [
-  "gennaio",
-  "febbraio",
-  "marzo",
-  "aprile",
-  "maggio",
-  "giugno",
-  "luglio",
-  "agosto",
-  "settembre",
-  "ottobre",
-  "novembre",
-  "dicembre",
-];
-export const nomeMese = (aaaaMm: string): string =>
-  MESI[parseInt(aaaaMm.slice(5, 7), 10) - 1];
+import { meseSolo, nomeMeseAnno, numero, tondo } from "./formato";
+import type { Cella, Elenco, RigaCalcolo, Spiegazione } from "./Spiega";
 
 /** "dal 1 al 17 novembre 2025" for the running month, "novembre 2025" for a closed one. */
 export const periodoAnnoPrima = (m: MeseRiepilogo): string => {
   const annoPrima = parseInt(m.mese.slice(0, 4), 10) - 1;
   return m.parziale
-    ? `dal 1 al ${parseInt(m.fino_al.slice(8, 10), 10)} ${nomeMese(m.mese)} ${annoPrima}`
-    : `${nomeMese(m.mese)} ${annoPrima}`;
+    ? `dal 1 al ${parseInt(m.fino_al.slice(8, 10), 10)} ${meseSolo(m.mese)} ${annoPrima}`
+    : `${meseSolo(m.mese)} ${annoPrima}`;
 };
 
 const BO = "BusinessObjects di Vittoria";
@@ -44,7 +28,7 @@ const ORDINE_LINEE = ["auto", "re", "tr", "sp", "vita", "altro"];
 /** Below this the list and the number are the same figure (cent roundings of month by month sums). */
 const CENTESIMO = 0.05;
 
-export const tondo = (v: number): number => Math.round(v * 100) / 100;
+export { meseSolo, tondo };
 const somma = (v: number[]): number => tondo(v.reduce((a, b) => a + b, 0));
 export const dataBreve = (iso: string | null | undefined): string =>
   iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : "n.d.";
@@ -52,15 +36,15 @@ export const pct = (v: number | null): string =>
   v == null
     ? "n.d."
     : `${v >= 0 ? "+" : ""}${v.toLocaleString("it-IT", { maximumFractionDigits: 2 })}%`;
-const pezzi = (n: number): string => n.toLocaleString("it-IT");
+const pezzi = (n: number): string => numero(n);
 const giorno = (iso: string): number => parseInt(iso.slice(8, 10), 10);
 const anno = (m: MeseRiepilogo): number => parseInt(m.mese.slice(0, 4), 10);
 
 /** "dal 1 al 21 novembre 2026" for the running month, "novembre 2026" for a closed one. */
 export const periodoMese = (m: MeseRiepilogo): string =>
   m.parziale
-    ? `dal 1 al ${giorno(m.fino_al)} ${nomeMese(m.mese)} ${anno(m)}`
-    : `${nomeMese(m.mese)} ${anno(m)}`;
+    ? `dal 1 al ${giorno(m.fino_al)} ${meseSolo(m.mese)} ${anno(m)}`
+    : `${meseSolo(m.mese)} ${anno(m)}`;
 
 const linee = (l: Record<string, LineaProvv> | undefined): string[] =>
   Object.keys(l ?? {}).sort(
@@ -159,11 +143,11 @@ export const spiegaMancano = (m: MeseRiepilogo): Spiegazione | undefined =>
   m.provv_ap_mese == null || m.mancano == null
     ? undefined
     : {
-        titolo: `Quanto manca per fare come ${nomeMese(m.mese)} ${anno(m) - 1}`,
-        cosa: `Provvigioni di tutto ${nomeMese(m.mese)} ${anno(m) - 1} meno quelle fatte finora: su quanto si puo' ancora contare se il mese finisce come l'anno scorso.`,
+        titolo: `Quanto manca per fare come ${meseSolo(m.mese)} ${anno(m) - 1}`,
+        cosa: `Provvigioni di tutto ${meseSolo(m.mese)} ${anno(m) - 1} meno quelle fatte finora: su quanto si puo' ancora contare se il mese finisce come l'anno scorso.`,
         calcolo: [
           {
-            voce: `${nomeMese(m.mese)} ${anno(m) - 1} intero`,
+            voce: `${meseSolo(m.mese)} ${anno(m) - 1} intero`,
             valore: m.provv_ap_mese,
           },
           { voce: periodoMese(m), valore: m.provv, segno: "-" },
@@ -180,12 +164,12 @@ export const spiegaQuota = (m: MeseRiepilogo): Spiegazione | undefined =>
   m.provv_ap_mese == null || m.provv_ap_mese <= 0
     ? undefined
     : {
-        titolo: `Quanto e' fatto di ${nomeMese(m.mese)} ${anno(m) - 1}`,
-        cosa: `Provvigioni fatte finora diviso le provvigioni di tutto ${nomeMese(m.mese)} ${anno(m) - 1}. Accanto, il giorno del mese a cui arrivano i dati.`,
+        titolo: `Quanto e' fatto di ${meseSolo(m.mese)} ${anno(m) - 1}`,
+        cosa: `Provvigioni fatte finora diviso le provvigioni di tutto ${meseSolo(m.mese)} ${anno(m) - 1}. Accanto, il giorno del mese a cui arrivano i dati.`,
         calcolo: [
           { voce: periodoMese(m), valore: m.provv },
           {
-            voce: `${nomeMese(m.mese)} ${anno(m) - 1} intero`,
+            voce: `${meseSolo(m.mese)} ${anno(m) - 1} intero`,
             valore: m.provv_ap_mese,
             segno: ":",
           },
@@ -343,6 +327,43 @@ export const spiegaIncassi = (
   };
 };
 
+/** One line of the incassi (auto or RE): the closed months from the company plus the titles since, = the line (R016d). */
+export const spiegaIncassiRamo = (
+  inc: Incassi,
+  ramo: "auto" | "re",
+  annoDati: number,
+  datiAl: string,
+): Spiegazione => {
+  const p = inc.parti;
+  const nome = ramo === "auto" ? "Auto" : "Rami elementari";
+  const calcolo: RigaCalcolo[] = [
+    ...(p?.chiusi
+      ? [
+          {
+            voce: `${intervallo(p.chiusi)} (compagnia)`,
+            valore: p.chiusi[ramo],
+          },
+        ]
+      : []),
+    ...(p?.dopo
+      ? [
+          {
+            voce: `${intervallo(p.dopo)} (titoli)`,
+            valore: p.dopo[ramo],
+            segno: p.chiusi ? ("+" as const) : undefined,
+          },
+        ]
+      : []),
+    { voce: `${nome} da gennaio`, valore: inc[ramo], segno: "=" },
+  ];
+  return {
+    titolo: `${nome}: incassi da inizio ${annoDati}`,
+    cosa: `Premi ${ramo === "auto" ? "auto" : "dei rami elementari"} incassati da tutta l'agenzia dal 1 gennaio al ${dataBreve(datiAl)}, come li conta Vittoria (${ramo === "auto" ? "senza gli infortuni del conducente, che vanno nel RE" : "con gli infortuni del conducente delle polizze auto"}).`,
+    calcolo,
+    fonte: `${BO}: NA302 per i mesi chiusi, NA013 per il mese in corso`,
+  };
+};
+
 export const spiegaCrescita = (
   nome: string,
   ac: number,
@@ -421,7 +442,7 @@ const elencoDelta = (
   nome: string,
 ) => {
   const righe: Cella[][] = mesi.map((m) => [
-    `${nomeMese(m.mese)}${m.parziale ? ` (fino al ${giorno(m.fino_al)})` : ""}`,
+    `${meseSolo(m.mese)}${m.parziale ? ` (fino al ${giorno(m.fino_al)})` : ""}`,
     m[chiave].np,
     m[chiave].ann,
     m[chiave].delta,
@@ -442,7 +463,7 @@ const elencoDelta = (
     ],
     nota:
       scarto !== 0 && Math.abs(scarto) <= CENTESIMO
-        ? `La somma dei mesi differisce di ${Math.abs(scarto).toLocaleString("it-IT", { minimumFractionDigits: 2 })} euro dal riquadro (${ytd.delta.toLocaleString("it-IT", { minimumFractionDigits: 2 })}): arrotondamenti dei centesimi mese per mese.`
+        ? `La somma dei mesi differisce di ${numero(Math.abs(scarto), 2)} euro dal riquadro (${numero(ytd.delta, 2)}): arrotondamenti dei centesimi mese per mese.`
         : undefined,
   };
 };
@@ -553,7 +574,7 @@ export const elencoSaldiMese = (saldiMese: [string, number][]) => ({
   titolo: "Saldo del conto premi a fine mese",
   colonne: ["Mese", "Saldo"],
   righe: saldiMese.map(([m, v]): Cella[] => [
-    `${nomeMese(m)} ${m.slice(0, 4)}`,
+    `${meseSolo(m)} ${m.slice(0, 4)}`,
     v,
   ]),
   nota: "Un saldo non si somma: l'elenco mostra come e' cambiato mese per mese. Il mese in corso e' all'ultimo movimento.",
@@ -574,7 +595,7 @@ export const elencoMovimentiAvanzo = (mv: MovimentiAvanzo) => ({
   totale: ["Totale del periodo", mv.entrate, mv.uscite, mv.al_saldo] as Cella[],
   nota: mv.quadra
     ? "Saldo di partenza + entrate - uscite = saldo di oggi."
-    : `Attenzione: saldo di partenza + entrate - uscite non da' il saldo del foglio (differenza ${(mv.differenza ?? 0).toLocaleString("it-IT", { minimumFractionDigits: 2 })}): nel foglio Saldi c'e' un refuso da guardare.`,
+    : `Attenzione: saldo di partenza + entrate - uscite non da' il saldo del foglio (differenza ${(mv.differenza ?? numero(0), 2)}): nel foglio Saldi c'e' un refuso da guardare.`,
 });
 
 export const spiegaAvanzo = (
@@ -697,7 +718,7 @@ export interface PassiProiezione {
 export const elencoPassi = (p: PassiProiezione, dal: string, al: string) => {
   const r = p.ricavi;
   const d = p.deducibili;
-  const periodo = `${nomeMese(dal)}-${nomeMese(al)}`;
+  const periodo = `${meseSolo(dal)}-${meseSolo(al)}`;
   return {
     titolo: "Come si arriva alla proiezione di dicembre",
     colonne: ["Passaggio", "Ricavi", "Costi deducibili"],
@@ -705,7 +726,7 @@ export const elencoPassi = (p: PassiProiezione, dal: string, al: string) => {
       [`Da ${periodo} (${p.mesi} mesi)`, r.da_gennaio, d.da_gennaio],
       ["meno ARAG (si conta a parte)", -r.arag, null],
       [
-        `meno voci una tantum${r.di_cui_incentivi_marzo ? ` (con incentivi annuali di marzo ${r.di_cui_incentivi_marzo.toLocaleString("it-IT", { minimumFractionDigits: 2 })})` : ""}`,
+        `meno voci una tantum${r.di_cui_incentivi_marzo ? ` (con incentivi annuali di marzo ${numero(r.di_cui_incentivi_marzo, 2)})` : ""}`,
         -r.una_tantum,
         -d.una_tantum,
       ],
@@ -730,19 +751,14 @@ const FONTE_FISCALE =
   "estratti conto Asti e Desio, foglio Saldi, partite della compagnia (BO), fatture; regole in Per lo studio";
 
 export const spiegaUtileFiscale = (f: FiscaleCruscotto): Spiegazione => {
-  const mesi = Object.keys(f.per_mese).sort();
-  // ARAG commissions come once and are in no month: a row of their own, so the list adds up to the January-to-date
-  const arag = f.proiezione_passi?.ricavi.arag ?? 0;
-  const tot = somma([...mesi.map((m) => f.per_mese[m].utile_fiscale), arag]);
-  const scarto = tondo(tot - f.da_gennaio.utile_fiscale);
   return {
     titolo: "Utile fiscale previsto a dicembre",
-    cosa: `Proiezione dell'anno: media dei mesi completi (${nomeMese(f.dal)}-${nomeMese(f.al)}, ${f.mesi_usati} mesi) per 12, con le voci una tantum contate una volta sola. Da ${nomeMese(f.dal)} a ${nomeMese(f.al)}: ricavi ${f.da_gennaio.ricavi.toLocaleString("it-IT", { minimumFractionDigits: 2 })} meno costi deducibili ${f.da_gennaio.deducibili.toLocaleString("it-IT", { minimumFractionDigits: 2 })} = ${f.da_gennaio.utile_fiscale.toLocaleString("it-IT", { minimumFractionDigits: 2 })}.`,
+    cosa: `Proiezione dell'anno: media dei mesi completi (${meseSolo(f.dal)}-${meseSolo(f.al)}, ${f.mesi_usati} mesi) per 12, con le voci una tantum contate una volta sola. Da ${meseSolo(f.dal)} a ${meseSolo(f.al)}: ricavi ${numero(f.da_gennaio.ricavi, 2)} meno costi deducibili ${numero(f.da_gennaio.deducibili, 2)} = ${numero(f.da_gennaio.utile_fiscale, 2)}.`,
     calcolo: [
       ...(f.proiezione_passi
         ? [
             {
-              voce: `Ricavi che si ripetono: ${f.proiezione_passi.ricavi.al_mese.toLocaleString("it-IT", { minimumFractionDigits: 2 })} al mese per 12`,
+              voce: `Ricavi che si ripetono: ${numero(f.proiezione_passi.ricavi.al_mese, 2)} al mese per 12`,
               valore: f.proiezione_passi.ricavi.per_12,
             },
             {
@@ -768,38 +784,69 @@ export const spiegaUtileFiscale = (f: FiscaleCruscotto): Spiegazione => {
       },
     ],
     fonte: FONTE_FISCALE,
-    elenco: {
-      titolo: "Utile fiscale mese per mese",
-      colonne: ["Mese", "Provvigioni", "Utile", "Utile fiscale"],
-      righe: [
-        ...mesi.map((m): Cella[] => [
-          `${nomeMese(m)} ${m.slice(0, 4)}`,
-          f.per_mese[m].provvigioni,
-          f.per_mese[m].utile,
-          f.per_mese[m].utile_fiscale,
-        ]),
-        ...(arag
-          ? [
-              [
-                "Provvigioni ARAG (arrivano una volta, in nessun mese)",
-                null,
-                arag,
-                arag,
-              ] as Cella[],
-            ]
-          : []),
-      ],
-      totale: [
-        "Da gennaio",
-        somma(mesi.map((m) => f.per_mese[m].provvigioni)),
-        somma([...mesi.map((m) => f.per_mese[m].utile), arag]),
-        tot,
-      ],
-      nota:
-        Math.abs(scarto) > 0.005
-          ? `Il totale dei mesi differisce di ${scarto.toLocaleString("it-IT", { minimumFractionDigits: 2 })} euro dall'utile fiscale da gennaio (${f.da_gennaio.utile_fiscale.toLocaleString("it-IT", { minimumFractionDigits: 2 })}).`
-          : `Totale dei mesi = utile fiscale da ${nomeMese(f.dal)} a ${nomeMese(f.al)}.`,
-    },
+    // the list behind the projected number ends on the projected number (review R016c); the months are in
+    // elencoMesiFiscale, shown in the detail page
+    elenco: f.proiezione_passi
+      ? elencoPassiUtile(f.proiezione_passi, f)
+      : elencoMesiFiscale(f),
+  };
+};
+
+/** The projection steps with a third column that closes on the projected taxable profit. */
+const elencoPassiUtile = (p: PassiProiezione, f: FiscaleCruscotto): Elenco => {
+  const e = elencoPassi(p, f.dal, f.al);
+  return {
+    titolo: "Come si arriva all'utile fiscale previsto",
+    colonne: [...e.colonne, "Utile fiscale"],
+    righe: e.righe.map((r): Cella[] => [...r, null]),
+    totale: [
+      "Utile fiscale previsto",
+      p.ricavi.totale,
+      p.deducibili.totale,
+      f.proiezione.utile_fiscale,
+    ],
+    nota: e.nota,
+  };
+};
+
+/** Month by month from January: the "Utile" column is the same profit as Utile e costi (no ARAG), ARAG goes only in the
+ * taxable profit column (review R051). */
+export const elencoMesiFiscale = (f: FiscaleCruscotto): Elenco => {
+  const mesi = Object.keys(f.per_mese).sort();
+  const arag = f.proiezione_passi?.ricavi.arag ?? 0;
+  const tot = somma([...mesi.map((m) => f.per_mese[m].utile_fiscale), arag]);
+  const scarto = tondo(tot - f.da_gennaio.utile_fiscale);
+  return {
+    titolo: "Utile fiscale mese per mese",
+    colonne: ["Mese", "Provvigioni", "Utile", "Utile fiscale"],
+    righe: [
+      ...mesi.map((m): Cella[] => [
+        nomeMeseAnno(m),
+        f.per_mese[m].provvigioni,
+        f.per_mese[m].utile,
+        f.per_mese[m].utile_fiscale,
+      ]),
+      ...(arag
+        ? [
+            [
+              "Provvigioni ARAG (arrivano una volta, in nessun mese)",
+              null,
+              null,
+              arag,
+            ] as Cella[],
+          ]
+        : []),
+    ],
+    totale: [
+      "Da gennaio",
+      somma(mesi.map((m) => f.per_mese[m].provvigioni)),
+      somma(mesi.map((m) => f.per_mese[m].utile)),
+      tot,
+    ],
+    nota:
+      Math.abs(scarto) > 0.005
+        ? `Il totale dei mesi differisce di ${numero(scarto, 2)} euro dall'utile fiscale da gennaio (${numero(f.da_gennaio.utile_fiscale, 2)}).`
+        : `Totale dei mesi = utile fiscale da ${meseSolo(f.dal)} a ${meseSolo(f.al)}. ARAG è solo nell'utile fiscale: l'utile è lo stesso della pagina Utile e costi.`,
   };
 };
 
@@ -842,7 +889,7 @@ export const spiegaConPrevisti = (
         segno: "=",
       },
       {
-        voce: `Rispetto all'obiettivo di ${(f.obiettivo ?? f.soglia).toLocaleString("it-IT")}`,
+        voce: `Rispetto all'obiettivo di ${f.obiettivo ?? numero(f.soglia)}`,
         valore: tondo(f.utile_fiscale_con_previsti - (f.obiettivo ?? f.soglia)),
       },
     ],

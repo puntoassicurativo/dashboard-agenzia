@@ -2,6 +2,8 @@ import { useBlocchi } from "./datiLati";
 import { ErroreCaricamento } from "./ErroreCaricamento";
 import { dataIt, euro } from "./formato";
 import { Pagina } from "./Lato";
+import { Spiegato } from "./Spiega";
+import { somma } from "./spiegaSchede";
 
 export interface SchedaMutuo {
   numero: string;
@@ -79,12 +81,30 @@ export const MutuiBlocco = ({ m }: { m: MutuiInfo }) => {
     <div className="space-y-4">
       <div className="rounded-lg border bg-card p-4 text-sm space-y-1">
         <p className="text-base">
-          Debito totale <b className="tabular-nums">{euro(m.totale_debito)}</b>
+          Debito totale{" "}
+          <b className="tabular-nums">
+            <Spiegato
+              spiega={{
+                titolo: "Debito residuo dei mutui",
+                cosa: "Somma del debito residuo di ogni mutuo dopo le rate già addebitate.",
+                calcolo: somma(
+                  m.mutui.map((x) => ({
+                    voce: x.nome,
+                    valore: x.debito_residuo ?? 0,
+                  })),
+                  { voce: "Debito totale", valore: m.totale_debito },
+                ),
+                fonte: "piani di ammortamento dei mutui ed estratti conto",
+              }}
+            >
+              {euro(m.totale_debito)}
+            </Spiegato>
+          </b>
         </p>
         <p className="text-muted-foreground">
           Dopo le rate addebitate fino al {dataIt(m.estratto_al)}.
           {prossima &&
-            ` Prossime rate il ${dataIt(prossima)}: ${euro(m.rata_mese)} dal conto gestionale 211900.`}
+            ` Prossime rate il ${dataIt(prossima)}: ${euro(m.rata_mese)} dal conto gestionale del Banco Desio.`}
         </p>
       </div>
 
@@ -167,7 +187,24 @@ export const MutuiBlocco = ({ m }: { m: MutuiInfo }) => {
                 <td className="text-right">{euro(a.interessi)}</td>
                 <td className="text-right">{euro(a.oneri)}</td>
                 <td className="text-right font-medium">
-                  {euro(a.interessi + a.oneri)}
+                  <Spiegato
+                    spiega={{
+                      titolo: `Interessi e oneri ${a.anno}`,
+                      cosa: "La parte delle rate che è un costo (la quota capitale restituisce il debito).",
+                      calcolo: [
+                        { voce: "Interessi", valore: a.interessi },
+                        { voce: "Oneri", valore: a.oneri, segno: "+" },
+                        {
+                          voce: "Costo dell'anno",
+                          valore: a.interessi + a.oneri,
+                          segno: "=",
+                        },
+                      ],
+                      fonte: "piani di ammortamento ed estratti conto",
+                    }}
+                  >
+                    {euro(a.interessi + a.oneri)}
+                  </Spiegato>
                 </td>
                 <td className="text-right">{euro(a.capitale)}</td>
               </tr>

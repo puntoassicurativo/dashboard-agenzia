@@ -78,8 +78,10 @@ const Tessera = ({
         {children}
         <Link
           to={indirizzo}
-          className="mt-1 self-start text-sm font-medium text-pa-blu no-underline hover:underline"
+          className="mt-1 inline-flex min-h-10 items-center self-start text-sm font-medium text-pa-blu no-underline hover:underline"
           aria-label={`${titolo}: apri il dettaglio`}
+          // the tile navigates too: stop the click here, or Back has to be pressed twice (review R041)
+          onClick={(e) => e.stopPropagation()}
         >
           Dettagli ›
         </Link>
@@ -120,7 +122,7 @@ const Tessere = ({ p, ricerca }: { p: DatiCruscotto; ricerca: string }) => {
       <Tessera
         voce="avanzo"
         ricerca={ricerca}
-        titolo="Avanzo del conto premi"
+        titolo="Saldo del conto premi"
         valore={euro(v.avanzo.valore)}
         spiega={spiegaAvanzo(v.avanzo, p.saldiMese, p.movimentiAvanzo)}
         colore={v.avanzo.valore < 0 ? "rosso" : "verde"}

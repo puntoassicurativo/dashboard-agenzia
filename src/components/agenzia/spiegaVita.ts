@@ -74,7 +74,7 @@ const somma = (v: number[]): number => tondo(v.reduce((a, b) => a + b, 0));
 const calcoloVita = (t: TotaliVita): RigaCalcolo[] => [
   { voce: "Premi annui", valore: t.annui, segno: "+" },
   {
-    voce: `Premi unici (di cui versamenti aggiuntivi ${numero(t.aggiuntivi, 2)})`,
+    voce: `Premi unici (di cui versamenti aggiuntivi su polizze non di investimento ${numero(t.aggiuntivi, 2)})`,
     valore: t.unici,
     segno: "+",
   },

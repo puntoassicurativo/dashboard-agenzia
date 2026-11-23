@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
@@ -132,13 +132,30 @@ vi.mock("../atomic-crm/providers/supabase/supabase", () => ({
   }),
 }));
 
+const Indietro = () => {
+  const vai = useNavigate();
+  return (
+    <button type="button" onClick={() => vai(-1)}>
+      indietro di prova
+    </button>
+  );
+};
+
 const app = () =>
   render(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter initialEntries={["/"]}>
         <Routes>
           <Route path="/" element={<Cruscotto />} />
-          <Route path="/cruscotto/:voce" element={<CruscottoDettaglio />} />
+          <Route
+            path="/cruscotto/:voce"
+            element={
+              <>
+                <Indietro />
+                <CruscottoDettaglio />
+              </>
+            }
+          />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -150,14 +167,14 @@ describe("Cruscotto semplice", () => {
     await expect
       .element(screen.getByText("Provvigioni di febbraio fino al 10"))
       .toBeVisible();
-    await screen.getByText("Avanzo del conto premi").click();
+    await screen.getByText("Saldo del conto premi").click();
     await expect
       .element(screen.getByRole("link", { name: "‹ Cruscotto" }))
       .toBeVisible();
     await expect
       .element(
         screen.getByRole("heading", {
-          name: "Avanzo del conto premi",
+          name: "Saldo del conto premi",
           level: 1,
         }),
       )
@@ -186,5 +203,16 @@ describe("Cruscotto semplice", () => {
     await expect
       .element(screen.getByRole("link", { name: "‹ Cruscotto" }))
       .not.toBeInTheDocument();
+  });
+
+  it("one Back after Dettagli returns to the Cruscotto (review R041)", async () => {
+    const screen = await app();
+    await screen
+      .getByRole("link", { name: "Saldo del conto premi: apri il dettaglio" })
+      .click();
+    await screen.getByText("indietro di prova").click();
+    await expect
+      .element(screen.getByText("Provvigioni di febbraio fino al 10"))
+      .toBeVisible();
   });
 });

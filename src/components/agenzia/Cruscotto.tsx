@@ -493,7 +493,7 @@ export const RiquadroAvanzo = ({ p }: { p: DatiCruscotto }) => {
   const spiega = spiegaAvanzo(av, p.saldiMese, p.movimentiAvanzo);
   return (
     <Riquadro
-      titolo="Avanzo del conto premi"
+      titolo="Saldo del conto premi"
       valore={euro(av.valore)}
       colore={av.valore < 0 ? "rosso" : "verde"}
       coloraValore

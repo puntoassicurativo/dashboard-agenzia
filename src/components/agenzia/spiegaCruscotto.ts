@@ -608,7 +608,7 @@ export const spiegaAvanzo = (
   saldiMese: [string, number][],
   mv: MovimentiAvanzo | null = null,
 ): Spiegazione => ({
-  titolo: "Avanzo del conto premi",
+  titolo: "Saldo del conto premi",
   cosa: "Saldo del conto separato dei premi secondo il foglio Saldi, all'ultima riga con un movimento vero (sotto ci sono righe che ripetono il saldo). Negativo = il conto ha anticipato soldi.",
   calcolo:
     mv && mv.dal_saldo != null

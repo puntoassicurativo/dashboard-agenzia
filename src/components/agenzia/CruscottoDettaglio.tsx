@@ -47,7 +47,7 @@ import {
 const TITOLI: Record<string, string> = {
   provvigioni: "Provvigioni",
   incassi: "Incassi",
-  avanzo: "Avanzo del conto premi",
+  avanzo: "Saldo del conto premi",
   "utile-fiscale": "Utile fiscale previsto",
   vita: "Vita",
   protezione: "Protezione",

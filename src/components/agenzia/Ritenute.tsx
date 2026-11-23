@@ -3,6 +3,12 @@ import { ErroreCaricamento } from "./ErroreCaricamento";
 import { dataIt, euro, nomeMese } from "./formato";
 import { Pagina } from "./Lato";
 import { RitenutaCompagnia } from "./RitenutaCompagnia";
+import { Spiegato } from "./Spiega";
+import {
+  spiegaCifra,
+  spiegaDifferenzaRitenute,
+  spiegaRitenutePosta,
+} from "./spiegaSchede";
 
 interface MeseRitenute {
   decadi: { decade: string; subagente: string; ritenuta: number }[];
@@ -41,10 +47,45 @@ export const Ritenute = () => {
                 Fatture pagate a {nomeMese(mese)}
               </span>
               <span className="block sm:inline sm:ml-2 text-muted-foreground tabular-nums">
-                dalla posta {euro(m.somma_posta)}
-                {m.studio
-                  ? `, studio ${euro(m.studio.importo)} il ${dataIt(m.studio.data)}, differenza ${euro(m.differenza)}`
-                  : ", lo studio non ha ancora mandato l'importo"}
+                dalla posta{" "}
+                <Spiegato
+                  spiega={spiegaRitenutePosta(
+                    mese,
+                    m.decadi,
+                    m.fatture,
+                    m.somma_posta,
+                  )}
+                >
+                  {euro(m.somma_posta)}
+                </Spiegato>
+                {m.studio ? (
+                  <>
+                    , studio{" "}
+                    <Spiegato
+                      spiega={spiegaCifra(
+                        "Addebito dello studio",
+                        m.studio.importo,
+                        `Ritenute che lo studio addebita il ${dataIt(m.studio.data)}.`,
+                        'mail dello studio "Addebito ritenute d\'acconto"',
+                      )}
+                    >
+                      {euro(m.studio.importo)}
+                    </Spiegato>{" "}
+                    il {dataIt(m.studio.data)}, differenza{" "}
+                    <Spiegato
+                      spiega={spiegaDifferenzaRitenute(
+                        mese,
+                        m.studio.importo,
+                        m.somma_posta,
+                        m.differenza ?? 0,
+                      )}
+                    >
+                      {euro(m.differenza)}
+                    </Spiegato>
+                  </>
+                ) : (
+                  ", lo studio non ha ancora mandato l'importo"
+                )}
               </span>
             </summary>
             <div className="mt-2 space-y-1">

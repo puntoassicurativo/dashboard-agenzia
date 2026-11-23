@@ -4,6 +4,8 @@ import { useBlocchi, SceltaMese } from "./datiLati";
 import { ErroreCaricamento } from "./ErroreCaricamento";
 import { dataIt, euro, nomeMese } from "./formato";
 import { Pagina } from "./Lato";
+import { Spiegato } from "./Spiega";
+import { spiegaTotalePersonale } from "./spiegaSchede";
 
 interface Cedolino {
   nome: string;
@@ -70,7 +72,17 @@ export const Personale = () => {
           <div key={k} className="rounded-lg border bg-card p-3">
             <div className="text-muted-foreground">{t}</div>
             <div className="text-lg font-semibold tabular-nums">
-              {euro(m.totali[k])}
+              <Spiegato
+                spiega={spiegaTotalePersonale(
+                  mese,
+                  k,
+                  t,
+                  m.dipendenti as unknown as Record<string, unknown>[],
+                  m.totali[k],
+                )}
+              >
+                {euro(m.totali[k])}
+              </Spiegato>
             </div>
           </div>
         ))}
@@ -81,7 +93,33 @@ export const Personale = () => {
           <div key={c.nome} className="rounded-lg border bg-card p-3 text-sm">
             <div className="flex justify-between gap-2">
               <span className="font-medium">{c.nome}</span>
-              <span className="tabular-nums">netto {euro(c.netto)}</span>
+              <span className="tabular-nums">
+                netto{" "}
+                <Spiegato
+                  spiega={{
+                    titolo: `Netto di ${c.nome}`,
+                    cosa: "Lordo meno contributi INPS del dipendente, IRPEF e addizionali.",
+                    calcolo: [
+                      { voce: "Lordo", valore: c.lordo },
+                      { voce: "INPS", valore: c.inps_dipendente, segno: "-" },
+                      { voce: "IRPEF", valore: c.irpef, segno: "-" },
+                      {
+                        voce: "Addizionali",
+                        valore: c.addizionali,
+                        segno: "-",
+                      },
+                      {
+                        voce: "Netto (dal cedolino)",
+                        valore: c.netto,
+                        segno: "=",
+                      },
+                    ],
+                    fonte: "cedolino dello studio",
+                  }}
+                >
+                  {euro(c.netto)}
+                </Spiegato>
+              </span>
             </div>
             <div className="text-muted-foreground tabular-nums">
               lordo {euro(c.lordo)}, INPS {euro(c.inps_dipendente)}, IRPEF{" "}

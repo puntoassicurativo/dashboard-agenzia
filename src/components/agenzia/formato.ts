@@ -32,8 +32,12 @@ export const nomeMese = (m: string): string => {
 
 /** "Fatture di 2026-10 dal cassetto" -> "Fatture di ottobre 2026 dal cassetto" (texts written by the agent). */
 export const mesiInLettere = (t: string): string =>
-  // not inside a folder path (input\fatture\2026-10) nor a full date (2026-10-05)
-  t.replace(/(?<![\\/\w-])(\d{4}-\d{2})(?![-\w])/g, (m) => nomeMese(m));
+  // not inside a folder path (input\fatture\2026-10) nor a full date (2026-10-05). The character before is captured
+  // and put back: a lookbehind throws SyntaxError on iOS Safari before 16.4 (review R015).
+  t.replace(
+    /(^|[^\\/\w-])(\d{4}-\d{2})(?![-\w])/g,
+    (_m, prima: string, mese: string) => prima + nomeMese(mese),
+  );
 
 export const dataIt = (iso: string | null | undefined): string =>
   iso

@@ -34,15 +34,19 @@ import {
   spiegaPerc,
   spiegaUtile,
   spiegaVersoFisco,
+  attesaCassetto,
+  notaParziale,
+  spiegaNonDeducibili,
   useAlberoUtile,
   usePeriodiUtile,
   utileFiscale,
 } from "./utileBlocchi";
+import { useBlocchi } from "./datiLati";
 
 const TITOLI: Record<Livello, string> = {
   entrato: "Entrato",
   uscito: "Uscito",
-  dove_finito: "Dove e' finito l'utile",
+  dove_finito: "Dove è finito l'utile",
 };
 
 /** One card of the block diagram: title, big number with its explanation, one line below. */
@@ -109,6 +113,7 @@ const Ramo = ({
   periodo,
   totaleUscito,
   profondita,
+  conCassetto,
 }: {
   n: Nodo;
   padre?: Nodo;
@@ -116,12 +121,14 @@ const Ramo = ({
   periodo: string;
   totaleUscito: number;
   profondita: number;
+  conCassetto: boolean;
 }) => {
   const [aperto, setAperto] = useState(false);
   const figli = n.figli ?? [];
   const elenco = figli.length ? undefined : elencoNodo(n, periodo);
   const apribile = figli.length > 0 || !!elenco;
-  const fatture = linkFatture(n, padre);
+  const fatture = linkFatture(n, padre, conCassetto);
+  const inAttesaCassetto = attesaCassetto(n, conCassetto);
   return (
     <li className={cn("border-t", n.solo_dettaglio && "text-muted-foreground")}>
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-1.5">
@@ -131,7 +138,7 @@ const Ramo = ({
           aria-expanded={apribile ? aperto : undefined}
           onClick={() => setAperto(!aperto)}
           className={cn(
-            "min-w-0 basis-full text-left sm:basis-0 sm:flex-1",
+            "min-h-10 min-w-0 basis-full text-left sm:min-h-0 sm:basis-0 sm:flex-1",
             apribile ? "cursor-pointer hover:text-pa-blu" : "cursor-default",
             profondita === 0 && "font-semibold",
           )}
@@ -151,6 +158,11 @@ const Ramo = ({
           >
             Fatture ›
           </Link>
+        )}
+        {inAttesaCassetto && (
+          <span className="ml-auto text-xs text-muted-foreground sm:ml-0">
+            fatture col cassetto fiscale
+          </span>
         )}
         {livello === "uscito" && n.perc != null && (
           <span
@@ -187,6 +199,7 @@ const Ramo = ({
               periodo={periodo}
               totaleUscito={totaleUscito}
               profondita={profondita + 1}
+              conCassetto={conCassetto}
             />
           ))}
         </ul>
@@ -204,10 +217,12 @@ const Pannello = ({
   a,
   livello,
   periodo,
+  conCassetto,
 }: {
   a: AlberoUtile;
   livello: Livello;
   periodo: string;
+  conCassetto: boolean;
 }) => {
   const n = a[livello];
   return (
@@ -236,6 +251,7 @@ const Pannello = ({
             periodo={periodo}
             totaleUscito={a.uscito.importo}
             profondita={0}
+            conCassetto={conCassetto}
           />
         ))}
       </ul>
@@ -350,11 +366,22 @@ export const UtileBlocchi = () => {
   const scelto = parametri.get("periodo") ?? periodi.data?.[0];
   const albero = useAlberoUtile(scelto);
   const fiscale = useBloccoFiscale();
+  const cassetto = useBlocchi<unknown, { n_fatture?: number }>("fatture");
+  const conCassetto = (cassetto.data?.info?.n_fatture ?? 0) > 0;
 
   if (periodi.isPending || (albero.isPending && !!scelto))
     return <div className="p-4 text-muted-foreground">Carico i dati...</div>;
   if (periodi.error) return <ErroreCaricamento errore={periodi.error} />;
   if (albero.error) return <ErroreCaricamento errore={albero.error} />;
+  if (scelto && !(periodi.data ?? []).includes(scelto))
+    return (
+      <div className="p-4 text-muted-foreground">
+        Periodo non trovato.{" "}
+        <Link to="/utile-costi" className="text-pa-blu underline">
+          Apri l'ultimo periodo
+        </Link>
+      </div>
+    );
   const a = albero.data;
   if (!scelto || !a)
     return (
@@ -367,16 +394,19 @@ export const UtileBlocchi = () => {
   const daGennaio = /^\d{4}$/.test(scelto);
   const periodo = nomePeriodo(scelto, a.mesi);
   // ARAG commissions belong to no month: only the "da gennaio" line adds them (same as the Tasse page)
-  const arag = daGennaio
-    ? ((fiscale.data as unknown as FiscaleCruscotto | null)?.proiezione_passi
-        ?.ricavi.arag ?? 0)
-    : 0;
+  const f = fiscale.data as unknown as FiscaleCruscotto | null | undefined;
+  // the fiscal block is of the current year: in January the "da gennaio" of the year before gets no ARAG of the new year
+  const stessoAnno = !!f && (f.al ?? "").slice(0, 4) === scelto;
+  const arag =
+    daGennaio && stessoAnno ? (f?.proiezione_passi?.ricavi.arag ?? 0) : 0;
+  const fiscaleNonPronto = daGennaio && (fiscale.isPending || !!fiscale.error);
+  const parziale = notaParziale(scelto, a, new Date());
   const primi = figliSomma(a.uscito).slice(0, 3);
 
   return (
     <Pagina
       titolo="Utile e costi"
-      sotto="Entrato, uscito, utile e dove e' finito. Passa sopra (o tocca) un numero per il calcolo, clic per l'elenco completo."
+      sotto="Entrato, uscito, utile e dove è finito. Passa sopra (o tocca) un numero per il calcolo, clic per l'elenco completo."
     >
       <label className="flex items-center gap-2 text-sm">
         Periodo
@@ -394,10 +424,8 @@ export const UtileBlocchi = () => {
           ))}
         </select>
       </label>
-      {a.parziale && (
-        <p className="text-sm text-muted-foreground -mt-2">
-          Mese non ancora finito: i numeri crescono fino all'ultimo estratto.
-        </p>
+      {parziale && (
+        <p className="text-sm text-muted-foreground -mt-2">{parziale}</p>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] gap-2">
@@ -413,7 +441,7 @@ export const UtileBlocchi = () => {
           titolo="Uscito"
           valore={a.uscito.importo}
           spiega={spiegaNodo(a.uscito, "uscito", periodo)}
-          sotto={`le voci piu' grandi: ${primi.map((f) => f.nome.split(" (")[0]).join(", ")}`}
+          sotto={`le voci più grandi: ${primi.map((f) => f.nome.split(" (")[0]).join(", ")}`}
           verso="blocco-uscito"
         />
         <Freccia />
@@ -426,7 +454,7 @@ export const UtileBlocchi = () => {
         />
         <Freccia />
         <Blocco
-          titolo="Dove e' finito"
+          titolo="Dove è finito"
           valore={a.dove_finito.importo}
           spiega={spiegaNodo(a.dove_finito, "dove_finito", periodo)}
           sotto="prelievi dei soci, mutui, resta sui conti"
@@ -442,7 +470,7 @@ export const UtileBlocchi = () => {
         </span>
         <span>
           +{" "}
-          <Spiegato spiega={spiegaNodo(a.al_fisco, "uscito", periodo)}>
+          <Spiegato spiega={spiegaNonDeducibili(a, periodo)}>
             {euro(a.al_fisco.importo)}
           </Spiegato>{" "}
           costi non deducibili
@@ -466,13 +494,21 @@ export const UtileBlocchi = () => {
             ARAG
           </span>
         )}
-        <span className="font-semibold">
-          ={" "}
-          <Spiegato spiega={spiegaVersoFisco(a, periodo, arag)}>
-            {euro(utileFiscale(a, arag))}
-          </Spiegato>{" "}
-          utile fiscale
-        </span>
+        {fiscaleNonPronto ? (
+          <span className="text-muted-foreground">
+            {fiscale.error
+              ? "= utile fiscale non disponibile: il blocco fiscale non si è caricato"
+              : "= utile fiscale: carico..."}
+          </span>
+        ) : (
+          <span className="font-semibold">
+            ={" "}
+            <Spiegato spiega={spiegaVersoFisco(a, periodo, arag)}>
+              {euro(utileFiscale(a, arag))}
+            </Spiegato>{" "}
+            utile fiscale
+          </span>
+        )}
         <Link
           to="/tasse/utile-fiscale"
           className="font-medium text-pa-blu no-underline hover:underline"
@@ -488,20 +524,26 @@ export const UtileBlocchi = () => {
         </p>
       )}
 
-      {daGennaio && a.in_attesa_222 && a.in_attesa_222.length > 0 && (
+      {a.in_attesa_222 && a.in_attesa_222.length > 0 && (
         <InAttesa222 righe={a.in_attesa_222} />
       )}
 
       {(["entrato", "uscito", "dove_finito"] as const).map((l) => (
-        <Pannello key={l} a={a} livello={l} periodo={periodo} />
+        <Pannello
+          key={l}
+          a={a}
+          livello={l}
+          periodo={periodo}
+          conCassetto={conCassetto}
+        />
       ))}
 
       <Sezione
         id="utile-costi.calcoli"
-        titolo="I calcoli di oggi (Andamento mese)"
+        titolo="I calcoli di oggi"
         riassunto="mese virtuoso, ponte dalla banca, voci, commercialista, estratti"
       >
-        <AndamentoPage />
+        <AndamentoPage dentro />
       </Sezione>
     </Pagina>
   );

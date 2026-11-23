@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { type Notifica, tutteLeNotifiche } from "./Campanella";
+import {
+  type Notifica,
+  notificheValide,
+  perChiNonESocio,
+  tutteLeNotifiche,
+} from "./Campanella";
 import { daScadenza } from "./CaricaFile";
 import { leggiNome, nomeOggetto, nomePulito } from "./caricamentiDati";
 import { mesiInLettere } from "./formato";
@@ -137,6 +142,34 @@ describe("mesi in lettere", () => {
     ).toBe(
       "Fatture di settembre 2030, in input\\fatture\\2030-09, scadenza 2030-10-05",
     );
+  });
+});
+
+describe("mesi in lettere su Safari vecchi", () => {
+  it("does not use a lookbehind, which throws SyntaxError on iOS before 16.4 (review R015)", () => {
+    expect(mesiInLettere.toString()).not.toContain("(?<");
+    expect(mesiInLettere("2030-09 e (2030-10)")).toBe(
+      "settembre 2030 e (ottobre 2030)",
+    );
+  });
+});
+
+describe("notifiche lette dal database", () => {
+  it("drops a notification without key or title instead of breaking the header (review R015)", () => {
+    const lette = notificheValide([
+      { titolo: "senza chiave", testo: "" },
+      decade,
+      null,
+      { chiave: "x", titolo: 3, testo: "" },
+    ]);
+    expect(lette).toEqual([decade]);
+    expect(notificheValide("non una lista")).toEqual([]);
+  });
+
+  it("gives a colleague no link to the partners' upload page (review R065)", () => {
+    const n = perChiNonESocio(decade);
+    expect(n.link).toBeNull();
+    expect(n.testo).toContain("La carica un socio");
   });
 });
 

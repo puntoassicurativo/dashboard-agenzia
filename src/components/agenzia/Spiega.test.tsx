@@ -89,4 +89,31 @@ describe("Spiegato", () => {
       .element(screen.getByRole("button", { name: /Elenco completo/ }))
       .not.toBeInTheDocument();
   });
+
+  it("keeps a long panel inside the window with the list button reachable (review R010)", async () => {
+    const lunga: Spiegazione = {
+      ...spiega,
+      calcolo: Array.from({ length: 60 }, (_, i) => ({
+        voce: `Voce ${i + 1}`,
+        valore: 1,
+        segno: i ? ("+" as const) : undefined,
+      })),
+    };
+    const screen = await render(
+      <div style={{ paddingTop: "40vh" }}>
+        <Spiegato spiega={lunga}>60 euro</Spiegato>
+      </div>,
+    );
+    // keyboard Enter opens the panel (as a touch does), not the list
+    screen
+      .getByRole("button", { name: /come si calcola/ })
+      .element()
+      .focus();
+    await userEvent.keyboard("{Enter}");
+    const pulsante = screen.getByRole("button", { name: /Elenco completo/ });
+    await expect.element(pulsante).toBeVisible();
+    const r = pulsante.element().getBoundingClientRect();
+    expect(r.top).toBeGreaterThanOrEqual(0);
+    expect(r.bottom).toBeLessThanOrEqual(window.innerHeight);
+  });
 });

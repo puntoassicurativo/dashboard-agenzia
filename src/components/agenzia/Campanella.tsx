@@ -9,7 +9,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
 import { useState } from "react";
+import { ErrorBoundary } from "react-error-boundary";
 import { Link } from "react-router";
+import { z } from "zod";
 
 import {
   Popover,
@@ -31,6 +33,29 @@ export interface Notifica {
   link: string | null;
 }
 
+const SCHEMA_NOTIFICA = z.object({
+  livello: z.enum(["attenzione", "info"]).catch("attenzione"),
+  chiave: z.string(),
+  titolo: z.string(),
+  testo: z.string().catch(""),
+  link: z.string().nullable().catch(null),
+});
+
+/** Keeps only well-formed notifications: a bad row must hide one line, not break the header (review R015). */
+export const notificheValide = (valore: unknown): Notifica[] =>
+  Array.isArray(valore)
+    ? valore.flatMap((v) => {
+        const r = SCHEMA_NOTIFICA.safeParse(v);
+        return r.success ? [r.data] : [];
+      })
+    : [];
+
+/** A colleague cannot open Carica file: no link, and the text says who does it (review R065). */
+export const perChiNonESocio = (n: Notifica): Notifica =>
+  n.link?.startsWith("/carica-file")
+    ? { ...n, link: null, testo: `${n.testo} La carica un socio.`.trim() }
+    : n;
+
 /** The morning run starts at 6:30; from 8 its notifications should be there. */
 export const ORA_GIRO_FATTO = 8;
 
@@ -46,11 +71,11 @@ const useNotificheTutti = () =>
       if (error) throw error;
       const r = data as {
         aggiornato_il: string;
-        riepilogo: { notifiche?: Notifica[] } | null;
+        riepilogo: { notifiche?: unknown } | null;
       } | null;
       return {
         aggiornato: r?.aggiornato_il ?? null,
-        notifiche: r?.riepilogo?.notifiche ?? [],
+        notifiche: notificheValide(r?.riepilogo?.notifiche),
       };
     },
     staleTime: 5 * 60 * 1000,
@@ -68,8 +93,9 @@ const useNotificheSoci = (soci: boolean) =>
         .eq("mese", "info")
         .maybeSingle();
       if (error) throw error;
-      return ((data?.valori as { notifiche?: Notifica[] } | undefined)
-        ?.notifiche ?? []) as Notifica[];
+      return notificheValide(
+        (data?.valori as { notifiche?: unknown } | undefined)?.notifiche,
+      );
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -114,7 +140,16 @@ export const tutteLeNotifiche = (
   return [...giro, ...decadi.reverse(), ...soci, ...altre.reverse()];
 };
 
-export const Campanella = ({ className }: { className?: string }) => {
+/** A read that failed is said as such, not taken for "the run did not go" (review R068). */
+const NON_CARICATE: Notifica = {
+  livello: "info",
+  chiave: "notifiche|errore",
+  titolo: "Le notifiche non si sono caricate",
+  testo: "Riprova tra poco o ricarica la pagina.",
+  link: null,
+};
+
+const CampanellaInterna = ({ className }: { className?: string }) => {
   const [aperta, setAperta] = useState(false);
   const { data: socio } = useAccessoUtile();
   const tutti = useNotificheTutti();
@@ -124,13 +159,15 @@ export const Campanella = ({ className }: { className?: string }) => {
   const decadiCaricate = (caricati.data ?? [])
     .filter((c) => c.tipo === "decade" && !c.scaricato)
     .map((c) => c.sotto);
-  const lista = tutteLeNotifiche(
-    tutti.data?.aggiornato ?? null,
-    tutti.data?.notifiche ?? [],
-    soci.data ?? [],
-    decadiCaricate,
-    new Date(),
-  );
+  const lista = tutti.isError
+    ? [NON_CARICATE]
+    : tutteLeNotifiche(
+        tutti.data.aggiornato,
+        tutti.data.notifiche,
+        soci.data ?? [],
+        decadiCaricate,
+        new Date(),
+      ).map((x) => (socio ? x : perChiNonESocio(x)));
   const n = lista.length;
   return (
     <Popover open={aperta} onOpenChange={setAperta}>
@@ -170,7 +207,9 @@ export const Campanella = ({ className }: { className?: string }) => {
                 key={x.chiave}
                 className="border-t px-3 py-2 first:border-t-0"
               >
-                <div className="font-medium">⚠ {mesiInLettere(x.titolo)}</div>
+                <div className="font-medium">
+                  {x.livello === "info" ? "ℹ" : "⚠"} {mesiInLettere(x.titolo)}
+                </div>
                 <div className="text-muted-foreground">
                   {mesiInLettere(x.testo)}
                 </div>
@@ -200,3 +239,10 @@ export const Campanella = ({ className }: { className?: string }) => {
     </Popover>
   );
 };
+
+/** The bell sits in the header, outside the page's error boundary: its own boundary hides it on error (review R015). */
+export const Campanella = ({ className }: { className?: string }) => (
+  <ErrorBoundary fallback={null}>
+    <CampanellaInterna className={className} />
+  </ErrorBoundary>
+);

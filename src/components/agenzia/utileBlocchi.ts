@@ -4,7 +4,7 @@
  * percentages -> profit -> where the profit went. Every node opens into its children down to the single payments
  * (23/11/2026); every number explains itself (Spiega.tsx).
  */
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
 import { dataIt, euro, nomeMese } from "./formato";
@@ -28,6 +28,8 @@ export interface Nodo {
   solo_dettaglio?: boolean;
   meta_comuni?: number;
   utile_fiscale?: number;
+  /** How a leaf without payments is reached (written by the morning run, review R055). */
+  passi?: { voce: string; importo?: number; valore?: number }[];
 }
 
 export interface InAttesa {
@@ -49,6 +51,9 @@ export interface AlberoUtile {
   controllo: { chiude: boolean; errori: string[]; non_abbinato: number };
   mesi?: string[];
   in_attesa_222?: InAttesa[];
+  /** First and last day covered by the bank statements in this row (a month can be incomplete, review R053). */
+  dal?: string;
+  al?: string;
 }
 
 export type Livello = "entrato" | "uscito" | "dove_finito";
@@ -95,6 +100,8 @@ export const useAlberoUtile = (periodo: string | undefined) =>
       if (error) throw error;
       return (data?.[0]?.valori ?? null) as AlberoUtile | null;
     },
+    // changing period keeps the page (and its period menu) on screen while the new tree loads (review R062)
+    placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -147,6 +154,13 @@ export const elencoNodo = (n: Nodo, periodo: string): Elenco | undefined => {
         ? "Senza giorno: righe del Banco Desio, del conto premi o del foglio Saldi (il mese e' quello del conto), oppure piu' pagamenti allo stesso nome nel mese."
         : undefined,
     };
+  if (n.passi?.length)
+    return {
+      titolo: `${n.nome}: come si arriva al numero, ${periodo}`,
+      colonne: ["Voce", "Importo"],
+      righe: n.passi.map((p): Cella[] => [p.voce, p.importo ?? p.valore ?? 0]),
+      totale: ["Totale", n.importo],
+    };
   if (n.per_mese?.length)
     return {
       titolo: `${n.nome}: mese per mese`,
@@ -170,44 +184,64 @@ export const elencoNodo = (n: Nodo, periodo: string): Elenco | undefined => {
 /** At most this many lines in the hover panel; a longer list is summed by month (the full list is one click away). */
 const RIGHE_TENDINA = 8;
 
+/** Biggest items first, the rest summed in one line: the panel stays on screen and still adds up (review R010). */
+const accorcia = (
+  righe: { voce: string; valore: number }[],
+): { voce: string; valore: number }[] => {
+  if (righe.length <= RIGHE_TENDINA - 1) return righe;
+  const tenute = RIGHE_TENDINA - 2;
+  const resto = righe.slice(tenute);
+  return [
+    ...righe.slice(0, tenute),
+    {
+      voce: `altre ${resto.length} voci`,
+      valore: tondo(resto.reduce((t, r) => t + r.valore, 0)),
+    },
+  ];
+};
+
 const calcoloNodo = (n: Nodo): RigaCalcolo[] => {
   const figli = figliSomma(n);
   if (figli.length)
     return [
-      ...figli.map(
-        (f, i): RigaCalcolo => ({
-          voce: f.nome,
-          valore: f.importo,
-          segno: i ? "+" : undefined,
-        }),
+      ...accorcia(figli.map((f) => ({ voce: f.nome, valore: f.importo }))).map(
+        (r, i): RigaCalcolo => ({ ...r, segno: i ? "+" : undefined }),
       ),
       { voce: n.nome, valore: n.importo, segno: "=" },
     ];
-  const righe: { voce: string; valore: number }[] = n.pagamenti?.length
-    ? n.pagamenti.length <= RIGHE_TENDINA
-      ? n.pagamenti.map((p) => ({
-          voce: `${quando(p)} ${p.chi}`.trim(),
-          valore: p.importo,
-        }))
-      : Object.entries(
-          n.pagamenti.reduce<Record<string, number>>((acc, p) => {
-            const k = p.mese ?? "";
-            acc[k] = tondo((acc[k] ?? 0) + p.importo);
-            return acc;
-          }, {}),
-        ).map(([m, v]) => ({
-          voce: m
-            ? `${nomeMese(m)} (${n.pagamenti?.filter((p) => (p.mese ?? "") === m).length} pagamenti)`
-            : "meta' dei bonifici comuni",
-          valore: v,
-        }))
-    : (n.per_mese ?? []).map((x) => ({
-        voce: nomeMese(x.mese),
-        valore: x.importo,
-      }));
+  const passi = (n.passi ?? []).map((p) => ({
+    voce: p.voce,
+    valore: p.importo ?? p.valore ?? 0,
+  }));
+  const righe: { voce: string; valore: number }[] = passi.length
+    ? passi
+    : n.pagamenti?.length
+      ? n.pagamenti.length <= RIGHE_TENDINA
+        ? n.pagamenti.map((p) => ({
+            voce: `${quando(p)} ${p.chi}`.trim(),
+            valore: p.importo,
+          }))
+        : Object.entries(
+            n.pagamenti.reduce<Record<string, number>>((acc, p) => {
+              const k = p.mese ?? "";
+              acc[k] = tondo((acc[k] ?? 0) + p.importo);
+              return acc;
+            }, {}),
+          ).map(([m, v]) => ({
+            voce: m
+              ? `${nomeMese(m)} (${n.pagamenti?.filter((p) => (p.mese ?? "") === m).length} pagamenti)`
+              : "meta' dei bonifici comuni",
+            valore: v,
+          }))
+      : (n.per_mese ?? []).map((x) => ({
+          voce: nomeMese(x.mese),
+          valore: x.importo,
+        }));
   if (!righe.length) return [{ voce: n.nome, valore: n.importo, segno: "=" }];
   return [
-    ...righe.map((r, i): RigaCalcolo => ({ ...r, segno: i ? "+" : undefined })),
+    ...accorcia(righe).map(
+      (r, i): RigaCalcolo => ({ ...r, segno: i ? "+" : undefined }),
+    ),
     { voce: "Totale", valore: n.importo, segno: "=" },
   ];
 };
@@ -312,15 +346,67 @@ const LINK_FATTURE: [RegExp, string][] = [
   [/musso/i, "tipo=collaboratori&cerca=musso"],
   [/^broker$/i, "tipo=broker"],
   [/utenze/i, "tipo=bollette"],
+];
+
+/** Invoices that come only from the tax drawer (cassetto fiscale): linked once at least one has arrived. */
+const LINK_CASSETTO: [RegExp, string][] = [
   [/commercialista/i, "cerca=giribaldi"],
   [/^altre spese e fatture$/i, "tipo=fornitori"],
 ];
 
-export const linkFatture = (n: Nodo, padre?: Nodo): string | null => {
-  const trovato = LINK_FATTURE.find(([rx]) => rx.test(n.nome));
+/** Name in the Saldi sheet -> name in the broker statements (AB Broker became PIB in September 2026); a broker not in
+ * this table has no statement or invoice, so it gets no link (review R011). */
+const BROKER_FATTURE: [RegExp, string][] = [
+  [/ab broker|pib/i, "pib"],
+  [/marradi/i, "marradi"],
+  [/uiafin/i, "uiafin"],
+  [/rmp/i, "rmp"],
+];
+
+export const linkFatture = (
+  n: Nodo,
+  padre?: Nodo,
+  conCassetto = false,
+): string | null => {
+  const trovato = [...LINK_FATTURE, ...(conCassetto ? LINK_CASSETTO : [])].find(
+    ([rx]) => rx.test(n.nome),
+  );
   if (trovato) return `/fatture?${trovato[1]}`;
-  // a broker by name: its invoices and statements
-  if (padre && /^broker$/i.test(padre.nome) && !/senza nome/i.test(n.nome))
-    return `/fatture?tipo=broker&cerca=${encodeURIComponent(n.nome.toLowerCase())}`;
+  if (padre && /^broker$/i.test(padre.nome)) {
+    const b = BROKER_FATTURE.find(([rx]) => rx.test(n.nome));
+    return b ? `/fatture?tipo=broker&cerca=${b[1]}` : null;
+  }
   return null;
+};
+
+/** Text instead of an empty link while the tax drawer has not arrived yet. */
+export const attesaCassetto = (n: Nodo, conCassetto: boolean): boolean =>
+  !conCassetto && LINK_CASSETTO.some(([rx]) => rx.test(n.nome));
+
+/** The non-deductible costs of the "towards the taxes" line: their own words, not the ones of "Uscito" (review R016f). */
+export const spiegaNonDeducibili = (
+  a: AlberoUtile,
+  periodo: string,
+): Spiegazione => ({
+  ...spiegaNodo(a.al_fisco, "uscito", periodo),
+  titolo: `Costi non deducibili, ${periodo}`,
+  cosa: "Spese pagate che per le tasse non contano (prelievi in contanti, rate della tombale, rata BMW): si sommano all'utile per arrivare all'utile fiscale.",
+  fonte:
+    "stesse quote di deducibilità della pagina Tasse (regole in Per lo studio)",
+});
+
+/** Text under the period menu when the row does not cover the whole month (review R053). */
+export const notaParziale = (
+  periodo: string,
+  a: Pick<AlberoUtile, "parziale" | "dal" | "al">,
+  oggi: Date,
+): string | null => {
+  if (!a.parziale) return null;
+  const meseOggi = `${oggi.getFullYear()}-${String(oggi.getMonth() + 1).padStart(2, "0")}`;
+  const passato = !ANNO.test(periodo) && periodo < meseOggi;
+  if (!passato)
+    return "Mese non ancora finito: i numeri crescono fino all'ultimo estratto conto.";
+  return a.dal && a.al
+    ? `Mese incompleto: gli estratti conto coprono solo dal ${dataIt(a.dal)} al ${dataIt(a.al)}.`
+    : "Mese incompleto: gli estratti conto non coprono tutto il mese.";
 };

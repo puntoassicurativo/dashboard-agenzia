@@ -558,7 +558,7 @@ const Tasse = ({ info }: { info: Info }) => {
   );
 };
 
-export const AndamentoPage = () => {
+export const AndamentoPage = ({ dentro = false }: { dentro?: boolean }) => {
   const accesso = useAccessoUtile();
   const anno = useBloccoAnno();
   const fiscale = useBloccoFiscale();
@@ -579,7 +579,8 @@ export const AndamentoPage = () => {
   if (!data || completi.length === 0)
     return (
       <div className="p-4 text-muted-foreground">
-        Nessun dato: manca l'estratto conto in input\banca.
+        Nessun dato: manca l'estratto conto della banca (si carica da Carica
+        file).
       </div>
     );
 
@@ -604,9 +605,17 @@ export const AndamentoPage = () => {
     .reduce((s, [, v]) => s + v, 0);
 
   return (
-    <div className="flex flex-col gap-4 max-w-6xl mx-auto w-full px-4 pt-2 pb-28 md:px-0 md:pt-0 md:pb-8">
+    <div
+      className={
+        dentro
+          ? "flex flex-col gap-4 w-full"
+          : "flex flex-col gap-4 max-w-6xl mx-auto w-full px-4 pt-2 pb-28 md:px-0 md:pt-0 md:pb-8"
+      }
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">Andamento mese della SNC</h1>
+        {!dentro && (
+          <h1 className="text-xl font-semibold">Andamento mese della SNC</h1>
+        )}
         <label className="text-sm flex items-center gap-2">
           Mese
           <select

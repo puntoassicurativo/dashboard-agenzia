@@ -47,6 +47,18 @@ export interface Spiegazione {
   elenco?: Elenco;
 }
 
+/** Inline, not Tailwind classes: the rule must hold everywhere (also in the tests, which load no stylesheet). */
+const ALTEZZA_TENDINA: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  overflow: "hidden",
+  maxHeight: "var(--radix-popover-content-available-height)",
+};
+const PARTE_CHE_SCORRE: React.CSSProperties = {
+  minHeight: 0,
+  overflowY: "auto",
+};
+
 const APRI_DOPO_MS = 120;
 const CHIUDI_DOPO_MS = 200;
 
@@ -228,17 +240,22 @@ export const Spiegato = ({ spiega, children, className }: SpiegatoProps) => {
         <PopoverContent
           align="start"
           collisionPadding={12}
-          className="w-80 max-w-[calc(100vw-2rem)] p-0 overflow-hidden border-pa-blu/30"
+          // never taller than the room left on screen: title and list button stay, the middle scrolls (review R010)
+          className="w-80 max-w-[calc(100vw-2rem)] border-pa-blu/30 p-0"
+          style={ALTEZZA_TENDINA}
           onOpenAutoFocus={(e) => {
             if (daMouse) e.preventDefault();
           }}
           onPointerEnter={(e) => e.pointerType === "mouse" && ferma()}
           onPointerLeave={esce}
         >
-          <div className="bg-pa-blu px-3 py-2 text-sm font-semibold text-white">
+          <div className="shrink-0 bg-pa-blu px-3 py-2 text-sm font-semibold text-white">
             {spiega.titolo}
           </div>
-          <div className="flex flex-col gap-2 px-3 py-2.5">
+          <div
+            className="flex flex-col gap-2 px-3 py-2.5"
+            style={PARTE_CHE_SCORRE}
+          >
             <div className="text-sm">{spiega.cosa}</div>
             {spiega.calcolo && spiega.calcolo.length > 0 && (
               <Calcolo righe={spiega.calcolo} />
@@ -246,7 +263,9 @@ export const Spiegato = ({ spiega, children, className }: SpiegatoProps) => {
             <div className="text-xs text-muted-foreground">
               Fonte: {spiega.fonte}
             </div>
-            {spiega.elenco && (
+          </div>
+          {spiega.elenco && (
+            <div className="flex shrink-0 flex-col gap-1 border-t px-3 py-2">
               <>
                 <button
                   type="button"
@@ -261,8 +280,8 @@ export const Spiegato = ({ spiega, children, className }: SpiegatoProps) => {
                   </div>
                 )}
               </>
-            )}
-          </div>
+            </div>
+          )}
         </PopoverContent>
       </Popover>
       {spiega.elenco && (

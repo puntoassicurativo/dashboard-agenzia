@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
+import { userEvent } from "vitest/browser";
 
 import { CruscottoDettaglio } from "./CruscottoDettaglio";
 import { Cruscotto } from "./CruscottoSemplice";
@@ -207,9 +208,13 @@ describe("Cruscotto semplice", () => {
 
   it("one Back after Dettagli returns to the Cruscotto (review R041)", async () => {
     const screen = await app();
-    await screen
-      .getByRole("link", { name: "Saldo del conto premi: apri il dettaglio" })
-      .click();
+    // keyboard, not the mouse: in a small test window a hover panel can cover the link
+    const link = screen.getByRole("link", {
+      name: "Saldo del conto premi: apri il dettaglio",
+    });
+    await expect.element(link).toBeVisible();
+    (link.element() as HTMLElement).focus();
+    await userEvent.keyboard("{Enter}");
     await screen.getByText("indietro di prova").click();
     await expect
       .element(screen.getByText("Provvigioni di febbraio fino al 10"))

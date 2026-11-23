@@ -66,7 +66,7 @@ const BLOCCHI_AREA: Record<Area, string[]> = {
 };
 const COSA: Record<Area, string> = {
   vita: "Incassi vita (polizze di risparmio e previdenza) divisi come li divide la compagnia: premi annui, premi unici (con i versamenti aggiuntivi) e pensionistiche (PIP).",
-  prot: "Incassi delle polizze vita di protezione, cioe' quelle che l'area di BO chiama Protezione: temporanee caso morte, Long Term Care e la 422T a termine fisso.",
+  prot: "Incassi delle polizze vita di protezione, cioè quelle che l'area di BO chiama Protezione: temporanee caso morte, Long Term Care e la 422T a termine fisso.",
 };
 
 const somma = (v: number[]): number => tondo(v.reduce((a, b) => a + b, 0));
@@ -144,7 +144,7 @@ const elencoProdotti = (
     totale: ["Totale", sAc, sAp],
     nota: ok
       ? "Totale dei prodotti = numero del riquadro."
-      : `Attenzione: il totale dei prodotti (${numero(sAc, 2)}) non e' uguale al numero del riquadro (${numero(totAc, 2)}).`,
+      : `Attenzione: il totale dei prodotti (${numero(sAc, 2)}) non è uguale al numero del riquadro (${numero(totAc, 2)}).`,
   };
 };
 

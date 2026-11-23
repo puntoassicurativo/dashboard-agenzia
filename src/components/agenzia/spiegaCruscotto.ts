@@ -99,13 +99,13 @@ const elencoLinee = (m: MeseRiepilogo) => {
       m.provv_ap,
       m.differenza,
     ],
-    nota: "Il ramo e' quello del titolo: le provvigioni degli infortuni del conducente restano nell'auto.",
+    nota: "Il ramo è quello del titolo: le provvigioni degli infortuni del conducente restano nell'auto.",
   };
 };
 
 const FONTE_PROVV = `${BO}, titoli incassati: report NA013 (danni) e NA016 (vita), per data del giornale di cassa`;
 const COSA_PROVV =
-  "Provvigioni di acquisto piu' provvigioni di incasso sui titoli incassati da tutta l'agenzia 346.";
+  "Provvigioni di acquisto più provvigioni di incasso sui titoli incassati da tutta l'agenzia 346.";
 
 export const spiegaProvv = (m: MeseRiepilogo): Spiegazione => ({
   titolo: `Provvigioni ${periodoMese(m)}`,
@@ -144,7 +144,7 @@ export const spiegaMancano = (m: MeseRiepilogo): Spiegazione | undefined =>
     ? undefined
     : {
         titolo: `Quanto manca per fare come ${meseSolo(m.mese)} ${anno(m) - 1}`,
-        cosa: `Provvigioni di tutto ${meseSolo(m.mese)} ${anno(m) - 1} meno quelle fatte finora: su quanto si puo' ancora contare se il mese finisce come l'anno scorso.`,
+        cosa: `Provvigioni di tutto ${meseSolo(m.mese)} ${anno(m) - 1} meno quelle fatte finora: su quanto si può ancora contare se il mese finisce come l'anno scorso.`,
         calcolo: [
           {
             voce: `${meseSolo(m.mese)} ${anno(m) - 1} intero`,
@@ -164,7 +164,7 @@ export const spiegaQuota = (m: MeseRiepilogo): Spiegazione | undefined =>
   m.provv_ap_mese == null || m.provv_ap_mese <= 0
     ? undefined
     : {
-        titolo: `Quanto e' fatto di ${meseSolo(m.mese)} ${anno(m) - 1}`,
+        titolo: `Quanto è fatto di ${meseSolo(m.mese)} ${anno(m) - 1}`,
         cosa: `Provvigioni fatte finora diviso le provvigioni di tutto ${meseSolo(m.mese)} ${anno(m) - 1}. Accanto, il giorno del mese a cui arrivano i dati.`,
         calcolo: [
           { voce: periodoMese(m), valore: m.provv },
@@ -242,7 +242,7 @@ const righeParti = (
   }
   if (dopo)
     out.push([
-      `${etichetta}, ${intervallo(dopo)}: titoli incassati (NA013), infortuni del conducente gia' nel RE`,
+      `${etichetta}, ${intervallo(dopo)}: titoli incassati (NA013), infortuni del conducente già nel RE`,
       dopo.auto,
       dopo.re,
       tondo(dopo.auto + dopo.re),
@@ -510,7 +510,7 @@ export const spiegaNuovePerse = (
 });
 
 export const spiegaPolizze = (nome: string, d: DeltaMese): Spiegazione => ({
-  titolo: `${nome}: polizze in piu' o in meno`,
+  titolo: `${nome}: polizze in più o in meno`,
   cosa: "Polizze nuove meno polizze annullate (le sostituzioni non cambiano il numero).",
   calcolo: [
     { voce: "Polizze nuove", valore: pezzi(d.np_pezzi) },
@@ -577,7 +577,7 @@ export const elencoSaldiMese = (saldiMese: [string, number][]) => ({
     `${meseSolo(m)} ${m.slice(0, 4)}`,
     v,
   ]),
-  nota: "Un saldo non si somma: l'elenco mostra come e' cambiato mese per mese. Il mese in corso e' all'ultimo movimento.",
+  nota: "Un saldo non si somma: l'elenco mostra come è cambiato mese per mese. Il mese in corso è all'ultimo movimento.",
 });
 
 export const elencoMovimentiAvanzo = (mv: MovimentiAvanzo) => ({
@@ -595,7 +595,7 @@ export const elencoMovimentiAvanzo = (mv: MovimentiAvanzo) => ({
   totale: ["Totale del periodo", mv.entrate, mv.uscite, mv.al_saldo] as Cella[],
   nota: mv.quadra
     ? "Saldo di partenza + entrate - uscite = saldo di oggi."
-    : `Attenzione: saldo di partenza + entrate - uscite non da' il saldo del foglio (differenza ${(mv.differenza ?? numero(0), 2)}): nel foglio Saldi c'e' un refuso da guardare.`,
+    : `Attenzione: saldo di partenza + entrate - uscite non da' il saldo del foglio (differenza ${(mv.differenza ?? numero(0), 2)}): nel foglio Saldi c'è un refuso da guardare.`,
 });
 
 export const spiegaAvanzo = (
@@ -730,14 +730,14 @@ export const elencoPassi = (p: PassiProiezione, dal: string, al: string) => {
         -r.una_tantum,
         -d.una_tantum,
       ],
-      ["meno interessi e oneri dei mutui gia' pagati", null, -d.mutui_pagati],
+      ["meno interessi e oneri dei mutui già pagati", null, -d.mutui_pagati],
       ["= parte che si ripete ogni mese", r.ricorrenti, d.ricorrenti],
       [`al mese (diviso ${p.mesi})`, r.al_mese, d.al_mese],
       ["per 12 mesi", r.per_12, d.per_12],
-      ["piu' voci una tantum, una volta sola", r.una_tantum, d.una_tantum],
-      ["piu' ARAG su 12 mesi", r.arag_anno, null],
+      ["più voci una tantum, una volta sola", r.una_tantum, d.una_tantum],
+      ["più ARAG su 12 mesi", r.arag_anno, null],
       [
-        "piu' mutui: gia' pagati e rate fino a dicembre",
+        "più mutui: già pagati e rate fino a dicembre",
         null,
         tondo(d.mutui_pagati + d.mutui_resto_anno),
       ],
@@ -762,7 +762,7 @@ export const spiegaUtileFiscale = (f: FiscaleCruscotto): Spiegazione => {
               valore: f.proiezione_passi.ricavi.per_12,
             },
             {
-              voce: "piu' ricavi una tantum e ARAG",
+              voce: "più ricavi una tantum e ARAG",
               valore: tondo(
                 f.proiezione_passi.ricavi.una_tantum +
                   f.proiezione_passi.ricavi.arag_anno,
@@ -899,7 +899,7 @@ export const spiegaConPrevisti = (
       .join(", "),
     elenco: {
       titolo: "Costi previsti da Fabio",
-      colonne: ["Voce", "Importo", "Gia' pagato", "Resta"],
+      colonne: ["Voce", "Importo", "Già pagato", "Resta"],
       righe: cp.voci.map((v) => [v.voce, v.importo, v.pagato, v.resta]),
       totale: [
         "Totale",

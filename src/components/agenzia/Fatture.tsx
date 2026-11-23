@@ -130,11 +130,11 @@ const RiquadroTombale = ({ t }: { t: Tombale }) => (
       <Spiegato
         spiega={{
           titolo: "Rate della tombale ancora da pagare",
-          cosa: "Rate del prospetto dello studio non ancora addebitate. Ogni rata e' l'F24 di fine mese sul conto gestionale: costo non deducibile, gia' nei conti.",
+          cosa: "Rate del prospetto dello studio non ancora addebitate. Ogni rata è l'F24 di fine mese sul conto gestionale: costo non deducibile, già nei conti.",
           calcolo: [
             { voce: "Totale del prospetto", valore: t.totale_prospetto },
             {
-              voce: `Rate gia' pagate (${t.pagate})`,
+              voce: `Rate già pagate (${t.pagate})`,
               valore:
                 Math.round(
                   (t.totale_prospetto - t.restano_nel_prospetto) * 100,

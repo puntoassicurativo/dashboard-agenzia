@@ -126,9 +126,9 @@ const FONTI: Record<Livello, string> = {
 const COSA: Record<Livello, string> = {
   entrato: "Soldi entrati all'agenzia nel periodo.",
   uscito:
-    "Soldi usciti per far funzionare l'agenzia (costi, IVA compresa). La percentuale e' sul totale uscito.",
+    "Soldi usciti per far funzionare l'agenzia (costi, IVA compresa). La percentuale è sul totale uscito.",
   dove_finito:
-    "Dove e' andato l'utile: prelievi e spese personali dei soci, quota capitale dei mutui e quello che resta sui conti (negativo = preso dal saldo).",
+    "Dove è andato l'utile: prelievi e spese personali dei soci, quota capitale dei mutui e quello che resta sui conti (negativo = preso dal saldo).",
 };
 
 export const perc = (v: number | null | undefined): string =>
@@ -153,7 +153,7 @@ export const elencoNodo = (n: Nodo, periodo: string): Elenco | undefined => {
       righe: n.pagamenti.map((p): Cella[] => [quando(p), p.chi, p.importo]),
       totale: ["Totale", null, n.importo],
       nota: n.pagamenti.some((p) => !p.data)
-        ? "Senza giorno: righe del Banco Desio, del conto premi o del foglio Saldi (il mese e' quello del conto), oppure piu' pagamenti allo stesso nome nel mese."
+        ? "Senza giorno: righe del Banco Desio, del conto premi o del foglio Saldi (il mese è quello del conto), oppure più pagamenti allo stesso nome nel mese."
         : undefined,
     };
   if (n.passi?.length)
@@ -232,7 +232,7 @@ const calcoloNodo = (n: Nodo): RigaCalcolo[] => {
           ).map(([m, v]) => ({
             voce: m
               ? `${nomeMese(m)} (${n.pagamenti?.filter((p) => (p.mese ?? "") === m).length} pagamenti)`
-              : "meta' dei bonifici comuni",
+              : "metà dei bonifici comuni",
             valore: v,
           }))
       : (n.per_mese ?? []).map((x) => ({
@@ -256,7 +256,7 @@ export const spiegaNodo = (
   titolo: `${n.nome}, ${periodo}`,
   cosa:
     n.nome === "Prelievi di Fabio" || n.nome === "Prelievi di Claudio"
-      ? `Bonifici intestati al socio piu' la meta' dei bonifici intestati a tutti e due (${euro(n.meta_comuni ?? 0)}).`
+      ? `Bonifici intestati al socio più la metà dei bonifici intestati a tutti e due (${euro(n.meta_comuni ?? 0)}).`
       : n.pagamenti?.length
         ? `${n.pagamenti.length} ${n.pagamenti.length === 1 ? "pagamento" : "pagamenti"}. ${COSA[livello]}`
         : COSA[livello],
@@ -267,7 +267,7 @@ export const spiegaNodo = (
 
 export const spiegaPerc = (n: Nodo, totale: number): Spiegazione => ({
   titolo: `${n.nome}: quota dell'uscito`,
-  cosa: "Quanto pesa questa voce su tutto quello che e' uscito nel periodo.",
+  cosa: "Quanto pesa questa voce su tutto quello che è uscito nel periodo.",
   calcolo: [
     { voce: n.nome, valore: n.importo },
     { voce: "diviso il totale uscito", valore: totale, segno: ":" },
@@ -278,7 +278,7 @@ export const spiegaPerc = (n: Nodo, totale: number): Spiegazione => ({
 
 export const spiegaUtile = (a: AlberoUtile, periodo: string): Spiegazione => ({
   titolo: `Utile, ${periodo}`,
-  cosa: "Quello che resta all'agenzia: tutto l'entrato meno tutto l'uscito, IVA compresa. I prelievi dei soci non sono costi: stanno in 'dove e' finito'.",
+  cosa: "Quello che resta all'agenzia: tutto l'entrato meno tutto l'uscito, IVA compresa. I prelievi dei soci non sono costi: stanno in 'dove è finito'.",
   calcolo: [
     { voce: "Entrato", valore: a.entrato.importo },
     { voce: "Uscito", valore: a.uscito.importo, segno: "-" },

@@ -1,6 +1,6 @@
 /**
  * "Utile e costi" (partners only, simplification plan of 21/11/2026, P4), in place of Contabilita' > Andamento mese.
- * On top the profit in blocks: entrato -> uscito (with percentages) -> utile -> dove e' finito, and the line to the taxable
+ * On top the profit in blocks: entrato -> uscito (with percentages) -> utile -> dove è finito, and the line to the taxable
  * profit. Every block opens into its children down to the single payments; the items with invoices behind open the Fatture
  * page already filtered. Below, closed, the calculations of the old Andamento page.
  */

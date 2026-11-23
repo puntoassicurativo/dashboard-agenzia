@@ -204,7 +204,7 @@ const Modulo = ({
           </label>
         )}
         <div className="flex flex-col gap-1 sm:col-span-2">
-          File (anche piu' di uno, al massimo {MAX_BYTE / 1024 / 1024} MB
+          File (anche più di uno, al massimo {MAX_BYTE / 1024 / 1024} MB
           ciascuno)
           {/* the browser's own button speaks the browser's language: a label of ours, in Italian, opens it */}
           <label className="flex cursor-pointer flex-wrap items-center gap-2 rounded border bg-background px-2 py-1.5">

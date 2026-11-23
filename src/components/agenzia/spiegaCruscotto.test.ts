@@ -289,12 +289,12 @@ describe("explanations of the main page", () => {
     const righe = elencoPassi(p, "2030-01", "2030-10").righe;
     const valore = (testo: string, col: number) =>
       righe.find((r) => String(r[0]).startsWith(testo))?.[col] as number;
-    const ricavi = ["per 12", "piu' voci una tantum", "piu' ARAG"].reduce(
+    const ricavi = ["per 12", "più voci una tantum", "più ARAG"].reduce(
       (s, t) => s + (valore(t, 1) ?? 0),
       0,
     );
     expect(ricavi).toBe(valore("= previsto", 1));
-    const deducibili = ["per 12", "piu' voci una tantum", "piu' mutui"].reduce(
+    const deducibili = ["per 12", "più voci una tantum", "più mutui"].reduce(
       (s, t) => s + (valore(t, 2) ?? 0),
       0,
     );

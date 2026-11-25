@@ -14,9 +14,13 @@ import {
   mesiMovimenti,
   NESSUN_FILTRO,
   spiegaDeltaYtd,
+  spiegaDeltaMeseAnnoPrima,
   spiegaIncassi,
+  spiegaIncassiMeseTot,
   spiegaIncassiRamo,
+  spiegaMix,
   spiegaProvv,
+  spiegaProvvYtd,
   spiegaUtileFiscale,
 } from "./spiegaCruscotto";
 import {
@@ -438,3 +442,53 @@ function fiscaleDiProva(): FiscaleCruscotto {
     },
   };
 }
+
+describe("explanations of the reorganised Cruscotto (25/11/2026)", () => {
+  it("commissions from January: the months add up to the number and to the difference", () => {
+    const mesi = [mese("2030-01", 150, 50), mese("2030-02", 80.55, 20)];
+    const s = spiegaProvvYtd(mesi);
+    expect(s.titolo).toBe("Provvigioni da gennaio a fine febbraio");
+    expect(s.calcolo?.[0].valore).toBe(230.55);
+    expect(s.calcolo?.[1].valore).toBe(200);
+    expect(risultato(s)).toBe(30.55);
+    expect(colonna(s.elenco!.righe, 1)).toBeCloseTo(230.55, 2);
+    expect(colonna(s.elenco!.righe, 3)).toBeCloseTo(30.55, 2);
+    expect(s.elenco!.totale).toEqual(["Da gennaio", 230.55, 200, 30.55]);
+  });
+
+  it("collected in the month: auto plus RE, then last year and the difference", () => {
+    const m = {
+      ...mese("2030-02", 100, 10),
+      incassi_auto: 300,
+      incassi_re: 120.5,
+      incassi_auto_ap: 250,
+      incassi_re_ap: 100,
+    };
+    const s = spiegaIncassiMeseTot(m);
+    expect(risultato(s)).toBe(420.5);
+    expect(s.calcolo?.[3].valore).toBe(350);
+    expect(s.calcolo?.[4].valore).toBe(70.5);
+  });
+
+  it("delta of the same month last year carries the difference", () => {
+    const m = mese("2030-02", 100, 50);
+    const s = spiegaDeltaMeseAnnoPrima("Delta auto", m, "delta_auto");
+    expect(risultato(s)).toBe(0);
+    expect(s.calcolo?.[3].valore).toBe(40);
+  });
+
+  it("mix of the portfolio: shares add up to 100 and the list matches the parts", () => {
+    const s = spiegaMix(
+      "da gennaio",
+      { auto: 600, re: 300, vita: 100 },
+      { auto: 500, re: 400, vita: 100 },
+      2030,
+      "NA013",
+    );
+    expect(risultato(s)).toBe(1000);
+    expect(s.calcolo?.[0].voce).toBe("Auto (60,0%)");
+    expect(colonna(s.elenco!.righe, 1)).toBe(1000);
+    expect(colonna(s.elenco!.righe, 3)).toBe(1000);
+    expect(s.elenco!.righe[0][4]).toBe("50,0%");
+  });
+});

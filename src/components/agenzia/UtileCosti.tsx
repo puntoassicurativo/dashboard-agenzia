@@ -285,11 +285,18 @@ const InAttesa222 = ({
 }) => {
   const info = useInfoModello();
   const totale = righe.reduce((s, r) => s + r.importo, 0);
+  // 25/11/2026 (Cruscotto proposal, step 5): one line that opens, so the profit blocks do not move down
   return (
-    <section className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40 sm:p-4">
-      <h2 className="text-base font-semibold">
-        In attesa di conferma: non sono nei conti
-      </h2>
+    <details
+      id="in-attesa-222"
+      className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-800 dark:bg-amber-950/40 sm:px-4"
+    >
+      <summary className="cursor-pointer select-none py-1 font-semibold">
+        {righe.length === 1
+          ? "1 pagamento del conto premi da confermare"
+          : `${righe.length} pagamenti del conto premi da confermare`}
+        , {euro(totale)}: non sono nei conti
+      </summary>
       <p className="mt-1 text-muted-foreground">
         Pagamenti partiti dal conto premi con una proposta di voce. Entrano nei
         conti solo quando qualcuno sceglie la voce nella tendina e la salva; il
@@ -368,7 +375,7 @@ const InAttesa222 = ({
           {euro(totali.cambia_dove)} solo dove è finito (prelievi dei soci).
         </div>
       )}
-    </section>
+    </details>
   );
 };
 

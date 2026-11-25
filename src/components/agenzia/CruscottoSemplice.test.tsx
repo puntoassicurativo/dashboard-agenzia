@@ -167,8 +167,12 @@ const app = () =>
 describe("Cruscotto semplice", () => {
   it("shows one number per tile and a tile opens its detail page", async () => {
     const screen = await app();
+    // 25/11/2026: the page opens from January, each tile says how its number counts
     await expect
-      .element(screen.getByText("Provvigioni di febbraio fino al 10"))
+      .element(screen.getByText("Provvigioni da gennaio"))
+      .toBeVisible();
+    await expect
+      .element(screen.getByText("per competenza").first())
       .toBeVisible();
     await screen.getByText("Saldo del conto premi").click();
     await expect
@@ -223,15 +227,34 @@ describe("Cruscotto semplice", () => {
     const screen = await app();
     await screen
       .getByRole("button", {
+        name: /^Provvigioni da gennaio al 10\/02\/2030: come si calcola/,
+      })
+      .click();
+    await expect
+      .element(screen.getByRole("heading", { name: /mese per mese/ }))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("link", { name: "‹ Cruscotto" }))
+      .not.toBeInTheDocument();
+  });
+
+  it("the period switch shows the month, with the same comparison on last year", async () => {
+    const screen = await app();
+    await screen.getByRole("button", { name: "Mese", exact: true }).click();
+    await expect
+      .element(screen.getByText("Provvigioni di febbraio fino al 10"))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("button", { name: "Mese", exact: true }))
+      .toHaveAttribute("aria-pressed", "true");
+    await screen
+      .getByRole("button", {
         name: /^Provvigioni dal 1 al 10 febbraio 2030: come si calcola/,
       })
       .click();
     await expect
       .element(screen.getByRole("heading", { name: /ramo per ramo/ }))
       .toBeVisible();
-    await expect
-      .element(screen.getByRole("link", { name: "‹ Cruscotto" }))
-      .not.toBeInTheDocument();
   });
 
   it("one Back after Dettagli returns to the Cruscotto (review R041)", async () => {
@@ -245,7 +268,7 @@ describe("Cruscotto semplice", () => {
     await userEvent.keyboard("{Enter}");
     await screen.getByText("indietro di prova").click();
     await expect
-      .element(screen.getByText("Provvigioni di febbraio fino al 10"))
+      .element(screen.getByText("Provvigioni da gennaio"))
       .toBeVisible();
   });
 });

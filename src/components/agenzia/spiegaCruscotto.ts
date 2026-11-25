@@ -182,6 +182,46 @@ export const spiegaQuota = (m: MeseRiepilogo): Spiegazione | undefined =>
         fonte: FONTE_PROVV,
       };
 
+/**
+ * Cruscotto in "Da gennaio" (proposal of 25/11/2026): the months of the year added up, each against the same period of
+ * the year before (the running month up to yesterday in both years).
+ */
+export const spiegaProvvYtd = (mesi: MeseRiepilogo[]): Spiegazione => {
+  const ultimo = mesi[mesi.length - 1];
+  const a = anno(ultimo);
+  const ac = somma(mesi.map((m) => m.provv));
+  const ap = somma(mesi.map((m) => m.provv_ap));
+  const diff = tondo(ac - ap);
+  const fino = ultimo.parziale
+    ? `al ${dataBreve(ultimo.fino_al)}`
+    : `a fine ${meseSolo(ultimo.mese)}`;
+  return {
+    titolo: `Provvigioni da gennaio ${fino}`,
+    cosa: `${COSA_PROVV} Somma dei mesi, ognuno contro lo stesso periodo del ${a - 1}: il mese in corso arriva a ieri anche nel ${a - 1}.`,
+    calcolo: [
+      { voce: `Da gennaio ${a}`, valore: ac },
+      { voce: `Stesso periodo ${a - 1}`, valore: ap, segno: "-" },
+      { voce: "Differenza", valore: diff, segno: "=" },
+      {
+        voce: "In percentuale (differenza diviso anno prima)",
+        valore: pct(ap ? tondo((diff / ap) * 100) : null),
+      },
+    ],
+    fonte: FONTE_PROVV,
+    elenco: {
+      titolo: `Provvigioni da gennaio, mese per mese, contro il ${a - 1}`,
+      colonne: ["Mese", String(a), String(a - 1), "Differenza"],
+      righe: mesi.map((m) => [
+        `${meseSolo(m.mese)}${m.parziale ? ` (fino al ${giorno(m.fino_al)})` : ""}`,
+        m.provv,
+        m.provv_ap,
+        tondo(m.provv - m.provv_ap),
+      ]),
+      totale: ["Da gennaio", ac, ap, diff],
+    },
+  };
+};
+
 // ------------------------------------------------------------------ incassi from January
 
 interface Parte {
@@ -404,6 +444,89 @@ export const spiegaIncassiMese = (
   };
 };
 
+/** Auto plus RE of one month, against the same period of the year before (Cruscotto in "Mese", 25/11/2026). */
+export const spiegaIncassiMeseTot = (m: MeseRiepilogo): Spiegazione => {
+  const ac = tondo(m.incassi_auto + m.incassi_re);
+  const ap = tondo(m.incassi_auto_ap + m.incassi_re_ap);
+  return {
+    titolo: `Incassi ${periodoMese(m)}`,
+    cosa: "Premi dei titoli incassati nel mese da tutta l'agenzia 346, auto più RE come li conta Vittoria: gli infortuni del conducente delle polizze auto stanno nel RE, i Trasporti sono fuori.",
+    calcolo: [
+      { voce: "Auto", valore: m.incassi_auto },
+      { voce: "RE", valore: m.incassi_re, segno: "+" },
+      { voce: periodoMese(m), valore: ac, segno: "=" },
+      {
+        voce: `${periodoAnnoPrima(m)} (auto ${numero(m.incassi_auto_ap, 2)} + RE ${numero(m.incassi_re_ap, 2)})`,
+        valore: ap,
+      },
+      { voce: "Differenza", valore: tondo(ac - ap) },
+    ],
+    fonte: `${BO}, report NA013 (titoli incassati), per data del giornale di cassa`,
+  };
+};
+
+/** Shares of the portfolio on the premiums collected: auto, RE, Vita with protection (25/11/2026). */
+export interface PartiMix {
+  auto: number;
+  re: number;
+  vita: number;
+}
+export const quota = (v: number, tot: number): number | null =>
+  tot > 0 ? (v / tot) * 100 : null;
+export const quotaTesto = (v: number | null): string =>
+  v == null
+    ? "n.d."
+    : `${v.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+
+export const spiegaMix = (
+  periodo: string,
+  a: PartiMix,
+  b: PartiMix,
+  annoDati: number,
+  fonteRami: string,
+): Spiegazione => {
+  const ta = tondo(a.auto + a.re + a.vita);
+  const tb = tondo(b.auto + b.re + b.vita);
+  const q = (v: number, t: number) => quotaTesto(quota(v, t));
+  return {
+    titolo: `Mix del portafoglio ${periodo}`,
+    cosa: "Quanto pesa ogni ramo sugli incassi: auto, RE e Vita con la protezione. L'obiettivo dell'agenzia è far scendere il peso dell'auto.",
+    calcolo: [
+      { voce: `Auto (${q(a.auto, ta)})`, valore: a.auto },
+      { voce: `RE (${q(a.re, ta)})`, valore: a.re, segno: "+" },
+      {
+        voce: `Vita e protezione (${q(a.vita, ta)})`,
+        valore: a.vita,
+        segno: "+",
+      },
+      { voce: "Incassi", valore: ta, segno: "=" },
+    ],
+    fonte: `${BO}: auto e RE da ${fonteRami}, Vita e protezione da NA016`,
+    elenco: {
+      titolo: `Mix del portafoglio ${periodo}, ${annoDati} contro ${annoDati - 1}`,
+      colonne: [
+        "Ramo",
+        String(annoDati),
+        "Quota",
+        String(annoDati - 1),
+        "Quota",
+      ],
+      righe: [
+        ["Auto", a.auto, q(a.auto, ta), b.auto, q(b.auto, tb)],
+        ["RE", a.re, q(a.re, ta), b.re, q(b.re, tb)],
+        ["Vita e protezione", a.vita, q(a.vita, ta), b.vita, q(b.vita, tb)],
+      ],
+      totale: [
+        "Totale",
+        ta,
+        ta > 0 ? "100%" : "n.d.",
+        tb,
+        tb > 0 ? "100%" : "n.d.",
+      ],
+    },
+  };
+};
+
 // ------------------------------------------------------------------ delta auto and RE
 
 export interface DeltaLinea {
@@ -545,6 +668,27 @@ export const spiegaDeltaMese = (
   calcolo: calcoloDelta(m[chiave]),
   fonte: FONTE_DELTA,
 });
+
+/** The same month of the year before, with the difference (Cruscotto in "Mese", 25/11/2026). */
+export const spiegaDeltaMeseAnnoPrima = (
+  nome: string,
+  m: MeseRiepilogo,
+  chiave: ChiaveDelta,
+): Spiegazione => {
+  const ap = chiave === "delta_auto" ? m.delta_auto_ap : m.delta_re_ap;
+  return {
+    titolo: `${nome} ${periodoAnnoPrima(m)}`,
+    cosa: cosaDelta(chiave === "delta_auto"),
+    calcolo: [
+      ...calcoloDelta(ap),
+      {
+        voce: `Differenza: ${periodoMese(m)} (${numero(m[chiave].delta, 2)}) meno questo`,
+        valore: tondo(m[chiave].delta - ap.delta),
+      },
+    ],
+    fonte: FONTE_DELTA,
+  };
+};
 
 // ------------------------------------------------------------------ surplus of the premium account
 

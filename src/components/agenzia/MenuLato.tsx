@@ -3,51 +3,72 @@ import { Link, matchPath, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 import { useAccessoUtile } from "./accesso";
 
+export type GruppoMenu = "Agenzia" | "Conti" | "Lavoro";
+
 export interface VoceMenu {
   titolo: string;
   to: string;
   attiva: (path: string) => boolean;
   soloSoci?: boolean;
+  gruppo: GruppoMenu;
 }
 
 const sotto = (base: string) => (p: string) =>
   p === base || !!matchPath(`${base}/*`, p);
 
-/** Final menu (simplification plan of 21/11/2026, P4, 23/11/2026). The phone bar has the same entries. */
+/**
+ * Final menu (simplification plan of 21/11/2026, P4, 23/11/2026). The phone bar has the same entries.
+ * 25/11/2026 (Cruscotto proposal, step 5): groups say what is inside (Agenzia, Conti, Lavoro), not who sees them;
+ * who sees what is unchanged (soloSoci).
+ */
 export const VOCI_MENU: VoceMenu[] = [
   // Lorenzo 22/11/2026 (night): the dashboard opens on the Cruscotto, first entry; Fatture right after, on its own
   {
     titolo: "Cruscotto",
     to: "/",
     soloSoci: true,
+    gruppo: "Agenzia",
     attiva: (p) => p === "/" || !!matchPath("/cruscotto/*", p),
   },
   {
     titolo: "Fatture",
     to: "/fatture",
     soloSoci: true,
+    gruppo: "Conti",
     attiva: sotto("/fatture"),
   },
   {
     titolo: "Utile e costi",
     to: "/utile-costi",
     soloSoci: true,
+    gruppo: "Conti",
     attiva: sotto("/utile-costi"),
   },
-  { titolo: "Tasse", to: "/tasse", soloSoci: true, attiva: sotto("/tasse") },
+  {
+    titolo: "Tasse",
+    to: "/tasse",
+    soloSoci: true,
+    gruppo: "Conti",
+    attiva: sotto("/tasse"),
+  },
+  {
+    titolo: "Da fare",
+    to: "/da-fare",
+    gruppo: "Lavoro",
+    attiva: sotto("/da-fare"),
+  },
   {
     titolo: "Carica file",
     to: "/carica-file",
     soloSoci: true,
+    gruppo: "Lavoro",
     attiva: sotto("/carica-file"),
   },
-  { titolo: "Da fare", to: "/da-fare", attiva: sotto("/da-fare") },
 ];
 
-const GRUPPI: { titolo: string; voci: VoceMenu[] }[] = [
-  { titolo: "Soci", voci: VOCI_MENU.filter((v) => v.soloSoci) },
-  { titolo: "Agenzia", voci: VOCI_MENU.filter((v) => !v.soloSoci) },
-];
+const GRUPPI: { titolo: GruppoMenu; voci: VoceMenu[] }[] = (
+  ["Agenzia", "Conti", "Lavoro"] as const
+).map((g) => ({ titolo: g, voci: VOCI_MENU.filter((v) => v.gruppo === g) }));
 
 /** Dark blue side menu of style 2 (desktop only; the phone has the bar at the bottom). */
 export const MenuLato = () => {

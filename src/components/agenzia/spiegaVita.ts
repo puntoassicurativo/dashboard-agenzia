@@ -27,6 +27,16 @@ interface NuovaProduzione {
   unici: number;
   aggiuntivi: number;
   totale: number;
+  /** 24/11/2026: products in area Protezione inside the new production (missing on older caches) */
+  prot?: number;
+  prot_pezzi?: number;
+}
+export interface ProdottoNp {
+  codice: string;
+  descrizione: string;
+  tipo: string;
+  premio: number;
+  pezzi: number;
 }
 export interface VitaMese {
   fino_al: string;
@@ -46,6 +56,7 @@ export interface VitaInfo {
   cresc: { vita: number | null; prot: number | null };
   np_fino_a: string | null;
   np_ytd: { ac: NuovaProduzione; ap: NuovaProduzione } | null;
+  np_prot_prodotti?: { ac: ProdottoNp[]; ap: ProdottoNp[] } | null;
   prodotti?: { ac: Prodotto[]; ap: Prodotto[] };
 }
 
@@ -264,9 +275,72 @@ export const spiegaNuovaProduzione = (
       { voce: "Unici", valore: np.ac.unici, segno: "+" },
       { voce: "Aggiuntivi", valore: np.ac.aggiuntivi, segno: "+" },
       { voce: "Nuova produzione", valore: np.ac.totale, segno: "=" },
+      ...(np.ac.prot != null
+        ? [
+            {
+              voce: `di cui protezione (${np.ac.prot_pezzi ?? 0} polizze)`,
+              valore: np.ac.prot,
+            },
+          ]
+        : []),
       { voce: "Stesso periodo anno prima", valore: np.ap.totale },
     ],
     fonte:
       "BusinessObjects di Vittoria, report NA302 (cruscotto della compagnia), mesi chiusi",
+  };
+};
+
+const FONTE_NP =
+  "BusinessObjects di Vittoria, report NA302 (cruscotto della compagnia), mesi chiusi";
+
+/** 24/11/2026 (Fabio): the protection inside the new production, as in the monthly mail of the company. */
+export const spiegaProtezioneNp = (info: VitaInfo): Spiegazione | undefined => {
+  const np = info.np_ytd;
+  if (!np || !info.np_fino_a || np.ac.prot == null) return undefined;
+  const fino = meseSolo(info.np_fino_a);
+  const prodotti = info.np_prot_prodotti?.ac ?? [];
+  return {
+    titolo: `Protezione nella nuova produzione vita, gennaio-${fino}`,
+    cosa: "Parte della nuova produzione vita fatta da polizze di protezione (temporanee caso morte e simili): i prodotti che BO mette nell'area Protezione. È la cifra della mail mensile della compagnia (raccolta e pezzi della protezione).",
+    calcolo: [
+      ...prodotti.map(
+        (p): RigaCalcolo => ({
+          voce: `${p.codice} ${p.descrizione} (${p.pezzi} ${p.pezzi === 1 ? "polizza" : "polizze"})`,
+          valore: p.premio,
+          segno: "+",
+        }),
+      ),
+      { voce: "Protezione", valore: np.ac.prot, segno: "=" },
+      {
+        voce: "Polizze",
+        valore: `${np.ac.prot_pezzi ?? 0}`,
+      },
+      ...(np.ap.prot != null
+        ? [
+            {
+              voce: `Stesso periodo anno prima (${np.ap.prot_pezzi ?? 0} polizze)`,
+              valore: np.ap.prot,
+            },
+          ]
+        : []),
+    ],
+    fonte: `${FONTE_NP}; area Protezione dei prodotti come in NA016`,
+    elenco:
+      prodotti.length > 0
+        ? {
+            titolo: `Protezione nella nuova produzione, gennaio-${fino}`,
+            colonne: ["Prodotto", "Polizze", "Premio"],
+            righe: prodotti.map((p): Cella[] => [
+              `${p.codice} ${p.descrizione}`,
+              String(p.pezzi),
+              p.premio,
+            ]),
+            totale: [
+              "Totale",
+              String(np.ac.prot_pezzi ?? 0),
+              np.ac.prot,
+            ] as Cella[],
+          }
+        : undefined,
   };
 };

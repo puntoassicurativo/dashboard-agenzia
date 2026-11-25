@@ -9,6 +9,10 @@ import {
   type Incassi,
   type PassiProiezione,
   spiegaAvanzo,
+  elencoMovimentiAvanzo,
+  filtraMovimenti,
+  mesiMovimenti,
+  NESSUN_FILTRO,
   spiegaDeltaYtd,
   spiegaIncassi,
   spiegaIncassiRamo,
@@ -259,6 +263,83 @@ describe("explanations of the main page", () => {
       differenza: -10,
     });
     expect(storto.elenco?.nota).toMatch(/refuso/);
+  });
+
+  it("premium account movements: filters by month, entries or exits and text, totals of the rows shown", () => {
+    const mv = {
+      dal_saldo: 1000,
+      dal: "2029-12-31",
+      al: "2030-03-01",
+      entrate: 500,
+      uscite: 300,
+      al_saldo: 1200,
+      differenza: 0,
+      quadra: true,
+      movimenti: [
+        {
+          data: "2030-01-05",
+          tipo: "entrata" as const,
+          descrizione: "provvigioni",
+          entrata: 500,
+          uscita: 0,
+          saldo: 1500,
+        },
+        {
+          data: "2030-01-05",
+          tipo: "uscita" as const,
+          descrizione: "subagente GE.MA",
+          entrata: 0,
+          uscita: 200,
+          saldo: 1300,
+        },
+        {
+          data: "2030-03-01",
+          tipo: "uscita" as const,
+          descrizione: "broker PIB",
+          entrata: 0,
+          uscita: 100,
+          saldo: 1200,
+        },
+      ],
+    };
+    expect(mesiMovimenti(mv)).toEqual(["2030-01", "2030-03"]);
+    expect(
+      filtraMovimenti(mv, { ...NESSUN_FILTRO, mese: "2030-01" }),
+    ).toHaveLength(2);
+    expect(
+      filtraMovimenti(mv, { ...NESSUN_FILTRO, tipo: "uscita" }).map(
+        (x) => x.descrizione,
+      ),
+    ).toEqual(["subagente GE.MA", "broker PIB"]);
+    expect(
+      filtraMovimenti(mv, { ...NESSUN_FILTRO, testo: "gE.ma" }),
+    ).toHaveLength(1);
+    // without a filter: the starting balance, every row, today's balance
+    const tutto = elencoMovimentiAvanzo(mv);
+    expect(tutto.righe).toHaveLength(4);
+    expect(tutto.totale).toEqual(["Totale del periodo", 500, 300, 1200]);
+    // with a filter: the total is the sum of the rows shown
+    const uscite = elencoMovimentiAvanzo(mv, {
+      ...NESSUN_FILTRO,
+      tipo: "uscita",
+    });
+    expect(uscite.righe).toHaveLength(2);
+    expect(uscite.totale?.slice(1, 3)).toEqual([0, 300]);
+  });
+
+  it("a sheet typo shows the difference in euro", () => {
+    const e = elencoMovimentiAvanzo({
+      dal_saldo: 0,
+      dal: "2029-12-31",
+      al: "2030-01-02",
+      entrate: 0,
+      uscite: 0,
+      al_saldo: 10,
+      differenza: -10,
+      quadra: false,
+      movimenti: [],
+    });
+    expect(e.nota).toMatch(/differenza -10,00/);
   });
 
   it("projection steps: each column ends on the projected figure", () => {

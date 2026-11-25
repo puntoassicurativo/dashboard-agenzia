@@ -24,10 +24,10 @@ import {
   meseSolo,
   RiquadroProvvigioniMese,
 } from "./MeseCruscotto";
+import { MovimentiConto } from "./MovimentiConto";
 import { RiquadroArea } from "./RiquadriVita";
 import { type Elenco, ElencoCompleto } from "./Spiega";
 import {
-  elencoMovimentiAvanzo,
   elencoPassi,
   elencoSaldiMese,
   spiegaConPrevisti,
@@ -103,9 +103,7 @@ const Incassi = ({ p }: { p: DatiCruscotto }) => (
 const Avanzo = ({ p }: { p: DatiCruscotto }) => (
   <>
     <RiquadroAvanzo p={p} />
-    {p.movimentiAvanzo && (
-      <Lista elenco={elencoMovimentiAvanzo(p.movimentiAvanzo)} />
-    )}
+    {p.movimentiAvanzo && <MovimentiConto mv={p.movimentiAvanzo} />}
     {p.saldiMese.length > 0 && <Lista elenco={elencoSaldiMese(p.saldiMese)} />}
   </>
 );

@@ -9,6 +9,7 @@ import { Spiegato } from "./Spiega";
 import {
   type Area,
   spiegaNuovaProduzione,
+  spiegaProtezioneNp,
   spiegaVitaAnnoPrima,
   spiegaVitaMese,
   spiegaVitaMeseAnnoPrima,
@@ -46,6 +47,8 @@ export const RiquadroArea = ({
   const anno = info.dati_al.slice(0, 4);
   const annoPrima = info.dati_al_ap.slice(0, 4);
   const np = area === "vita" ? spiegaNuovaProduzione(info) : undefined;
+  const npProt = spiegaProtezioneNp(info);
+  const pezzi = info.np_ytd?.ac.prot_pezzi ?? 0;
   return (
     <Riquadro
       titolo={`${area === "vita" ? "Vita" : "Protezione"} da inizio ${anno}`}
@@ -74,9 +77,23 @@ export const RiquadroArea = ({
         </span>
       )}
       {np && info.np_ytd && (
-        <span className="text-muted-foreground hidden sm:block">
+        <span className="text-muted-foreground block">
           nuova produzione a {meseSolo(info.np_fino_a ?? "")}:{" "}
           <Spiegato spiega={np}>{euro(info.np_ytd.ac.totale)}</Spiegato>
+          {npProt && (
+            <>
+              , di cui protezione{" "}
+              <Spiegato spiega={npProt}>{euro(info.np_ytd.ac.prot)}</Spiegato> (
+              {pezzi} {pezzi === 1 ? "polizza" : "polizze"})
+            </>
+          )}
+        </span>
+      )}
+      {area === "prot" && npProt && info.np_ytd && (
+        <span className="text-muted-foreground block">
+          nuova produzione a {meseSolo(info.np_fino_a ?? "")}:{" "}
+          <Spiegato spiega={npProt}>{euro(info.np_ytd.ac.prot)}</Spiegato> (
+          {pezzi} {pezzi === 1 ? "polizza" : "polizze"})
         </span>
       )}
     </Riquadro>

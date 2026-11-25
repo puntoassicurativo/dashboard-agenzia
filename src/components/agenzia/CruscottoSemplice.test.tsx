@@ -88,6 +88,7 @@ const AVANZO = {
   movimenti: [
     {
       data: "2030-01-20",
+      tipo: "entrata",
       descrizione: "rimessa di prova",
       entrata: 30,
       uscita: 0,
@@ -95,6 +96,7 @@ const AVANZO = {
     },
     {
       data: "2030-02-09",
+      tipo: "uscita",
       descrizione: "bonifico di prova",
       entrata: 0,
       uscita: 180,
@@ -188,6 +190,32 @@ describe("Cruscotto semplice", () => {
           "Saldo di partenza + entrate - uscite = saldo di oggi.",
         ),
       )
+      .toBeVisible();
+  });
+
+  it("the movements of the premium account can be filtered by exits and by text", async () => {
+    const screen = await app();
+    await screen.getByText("Saldo del conto premi").click();
+    await expect.element(screen.getByText(/rimessa di prova/)).toBeVisible();
+    await screen
+      .getByRole("combobox", { name: "Entrate o uscite" })
+      .selectOptions("uscita");
+    await expect.element(screen.getByText(/bonifico di prova/)).toBeVisible();
+    await expect
+      .element(screen.getByText(/rimessa di prova/))
+      .not.toBeInTheDocument();
+    await screen
+      .getByRole("combobox", { name: "Entrate o uscite" })
+      .selectOptions("tutti");
+    await screen
+      .getByRole("searchbox", { name: "Cerca nella descrizione" })
+      .fill("rimessa");
+    await expect.element(screen.getByText(/rimessa di prova/)).toBeVisible();
+    await expect
+      .element(screen.getByText(/bonifico di prova/))
+      .not.toBeInTheDocument();
+    await expect
+      .element(screen.getByText(/Totale delle 1 righe mostrate/))
       .toBeVisible();
   });
 

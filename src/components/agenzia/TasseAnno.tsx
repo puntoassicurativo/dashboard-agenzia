@@ -12,6 +12,7 @@ import { ErroreCaricamento } from "./ErroreCaricamento";
 import { type Fiscale, useBloccoFiscale } from "./Fiscale";
 import { dataIt, euro, nomeMese } from "./formato";
 import { Pagina } from "./Lato";
+import { FattureNonPagate } from "./FattureNonPagate";
 import { Riquadro } from "./Riquadro";
 import { IRAP_RATE } from "./tasse";
 import {
@@ -535,6 +536,7 @@ export const TasseAnno = () => {
         </Riquadro>
       </div>
       <Tabella b={b} f={f} />
+      <FattureNonPagate />
       {prima && <TasseAnnoPrima b={prima} />}
       <section className="rounded-lg border bg-card p-3 text-sm sm:p-4">
         <h2 className="text-base font-semibold">

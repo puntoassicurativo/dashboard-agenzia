@@ -548,7 +548,19 @@ export const spiegaDeltaMese = (
 
 // ------------------------------------------------------------------ surplus of the premium account
 
-/** Movements of the Saldi sheet between the balance of 30 days before and today's (backend saldi.finestra_avanzo). */
+/** One half of a Saldi row: from 24/11/2026 the entry (C, D) and the exit (E, F) of a row are two rows. */
+export interface MovimentoConto {
+  data: string | null;
+  /** missing on the rows written before 24/11/2026, when a row held both halves */
+  tipo?: "entrata" | "uscita";
+  descrizione: string;
+  entrata: number;
+  uscita: number;
+  saldo: number;
+}
+
+/** Movements of the Saldi sheet from the balance at the end of the year before to today's (backend
+ * saldi.finestra_avanzo; until 23/11/2026 the last 30 days). */
 export interface MovimentiAvanzo {
   dal_saldo: number | null;
   dal: string | null;
@@ -558,14 +570,50 @@ export interface MovimentiAvanzo {
   al_saldo: number;
   differenza: number | null;
   quadra: boolean;
-  movimenti: {
-    data: string | null;
-    descrizione: string;
-    entrata: number;
-    uscita: number;
-    saldo: number;
-  }[];
+  movimenti: MovimentoConto[];
 }
+
+export type TipoMovimento = "tutti" | "entrata" | "uscita";
+
+export interface FiltroMovimenti {
+  /** "AAAA-MM" or "" for every month */
+  mese: string;
+  tipo: TipoMovimento;
+  testo: string;
+}
+
+export const NESSUN_FILTRO: FiltroMovimenti = {
+  mese: "",
+  tipo: "tutti",
+  testo: "",
+};
+
+const tipoDi = (x: MovimentoConto): "entrata" | "uscita" =>
+  x.tipo ?? (x.uscita && !x.entrata ? "uscita" : "entrata");
+
+/** Months with at least one movement, oldest first ("AAAA-MM"). */
+export const mesiMovimenti = (mv: MovimentiAvanzo): string[] =>
+  [
+    ...new Set(
+      mv.movimenti.map((x) => x.data?.slice(0, 7) ?? "").filter(Boolean),
+    ),
+  ].sort();
+
+export const filtraMovimenti = (
+  mv: MovimentiAvanzo,
+  f: FiltroMovimenti,
+): MovimentoConto[] => {
+  const testo = f.testo.trim().toLowerCase();
+  return mv.movimenti.filter(
+    (x) =>
+      (!f.mese || x.data?.startsWith(f.mese)) &&
+      (f.tipo === "tutti" || tipoDi(x) === f.tipo) &&
+      (!testo || x.descrizione.toLowerCase().includes(testo)),
+  );
+};
+
+const filtrato = (f: FiltroMovimenti): boolean =>
+  f.mese !== "" || f.tipo !== "tutti" || f.testo.trim() !== "";
 
 const FONTE_SALDI =
   "foglio Saldi (Saldi.xlsx su Drive di fattureagenzia), colonna G";
@@ -580,23 +628,47 @@ export const elencoSaldiMese = (saldiMese: [string, number][]) => ({
   nota: "Un saldo non si somma: l'elenco mostra come è cambiato mese per mese. Il mese in corso è all'ultimo movimento.",
 });
 
-export const elencoMovimentiAvanzo = (mv: MovimentiAvanzo) => ({
-  titolo: `Movimenti del conto premi dal ${dataBreve(mv.dal)} al ${dataBreve(mv.al)}`,
-  colonne: ["Data e descrizione", "Entrata", "Uscita", "Saldo"],
-  righe: [
-    [`Saldo al ${dataBreve(mv.dal)}`, null, null, mv.dal_saldo] as Cella[],
-    ...mv.movimenti.map((x): Cella[] => [
-      `${dataBreve(x.data)} ${x.descrizione || "(senza descrizione)"}`,
-      x.entrata || null,
-      x.uscita || null,
-      x.saldo,
-    ]),
-  ],
-  totale: ["Totale del periodo", mv.entrate, mv.uscite, mv.al_saldo] as Cella[],
-  nota: mv.quadra
-    ? "Saldo di partenza + entrate - uscite = saldo di oggi."
-    : `Attenzione: saldo di partenza + entrate - uscite non da' il saldo del foglio (differenza ${(mv.differenza ?? numero(0), 2)}): nel foglio Saldi c'è un refuso da guardare.`,
-});
+/** The movements behind the balance. Without a filter the list starts from the balance at the end of the year before
+ * and the total is today's balance; with a filter the total is the sum of the rows shown (the balance column stays
+ * the sheet's, row by row). */
+export const elencoMovimentiAvanzo = (
+  mv: MovimentiAvanzo,
+  f: FiltroMovimenti = NESSUN_FILTRO,
+): Elenco => {
+  const righe = filtraMovimenti(mv, f);
+  const riga = (x: MovimentoConto): Cella[] => [
+    `${dataBreve(x.data)} ${tipoDi(x) === "uscita" ? "uscita" : "entrata"}: ${x.descrizione || "(senza descrizione)"}`,
+    x.entrata || null,
+    x.uscita || null,
+    x.saldo,
+  ];
+  const periodo = `dal ${dataBreve(mv.dal)} al ${dataBreve(mv.al)}`;
+  if (filtrato(f))
+    return {
+      titolo: `Movimenti del conto premi ${periodo}, filtrati`,
+      colonne: ["Data e descrizione", "Entrata", "Uscita", "Saldo"],
+      righe: righe.map(riga),
+      totale: [
+        `Totale delle ${righe.length} righe mostrate`,
+        tondo(righe.reduce((t, x) => t + x.entrata, 0)),
+        tondo(righe.reduce((t, x) => t + x.uscita, 0)),
+        null,
+      ],
+      nota: "Filtro acceso: il totale somma solo le righe mostrate, il saldo di ogni riga resta quello del foglio.",
+    };
+  return {
+    titolo: `Movimenti del conto premi ${periodo}`,
+    colonne: ["Data e descrizione", "Entrata", "Uscita", "Saldo"],
+    righe: [
+      [`Saldo al ${dataBreve(mv.dal)}`, null, null, mv.dal_saldo],
+      ...righe.map(riga),
+    ],
+    totale: ["Totale del periodo", mv.entrate, mv.uscite, mv.al_saldo],
+    nota: mv.quadra
+      ? "Saldo di partenza + entrate - uscite = saldo di oggi."
+      : `Attenzione: saldo di partenza + entrate - uscite non da' il saldo del foglio (differenza ${numero(mv.differenza ?? 0, 2)}): nel foglio Saldi c'è un refuso da guardare.`,
+  };
+};
 
 export const spiegaAvanzo = (
   av: {

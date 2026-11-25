@@ -3,11 +3,14 @@
  * he wants to see every invoice at once). One page in place of Tutte le fatture, Fatture e pagamenti and Fatture
  * subagenti: the full list straight away, split by month from the newest, with a filter by type and by payment. Every
  * amount and every month total explains itself. Partners only (andamento_blocchi is protected by RLS).
+ * 24/11/2026 (Fabio): the rows are the tax drawer's only; what is expected and not in the drawer yet is in "In arrivo"
+ * above the list; filters by type, status, month and supplier; on the phone the withholding goes under the supplier.
  */
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 
 import { getSupabaseClient } from "../atomic-crm/providers/supabase/supabase";
+import { type Controllo, ControlloFatture } from "./ControlloFatture";
 import { useBlocchi } from "./datiLati";
 import { ErroreCaricamento } from "./ErroreCaricamento";
 import {
@@ -15,15 +18,19 @@ import {
   type BrokerRiga,
   type Fattura,
   type FatturaCassetto,
+  type FatturaFissa,
   type FatturaSub,
   filtra,
+  fornitori,
   spiegaRicerca,
+  spiegaStato,
   perMese,
   type Stato,
   STATI,
   testoImporto,
   type Tipo,
   TIPI,
+  TIPI_FILTRO,
   unisciFatture,
 } from "./fattureUnite";
 import { dataIt, euro, nomeMese } from "./formato";
@@ -87,6 +94,10 @@ const RigaElenco = ({ r }: { r: Fattura }) => (
       <span className="block text-xs text-muted-foreground">
         <span className="sm:hidden">{dataIt(r.data)}, </span>
         {r.dettaglio}
+        {/* the withholding column is hidden on the phone: the figure goes here instead (24/11/2026) */}
+        {r.ritenuta ? (
+          <span className="sm:hidden">, ritenuta {euro(r.ritenuta)}</span>
+        ) : null}
       </span>
     </td>
     <td className="py-1.5 text-right whitespace-nowrap">
@@ -165,6 +176,44 @@ const RiquadroTombale = ({ t }: { t: Tombale }) => (
   </div>
 );
 
+const InArrivo = ({ righe }: { righe: Fattura[] }) => (
+  <section
+    aria-label="In arrivo"
+    className="rounded-2xl border border-l-4 border-l-amber-500 bg-card p-4 text-sm"
+  >
+    <h2 className="text-base font-semibold">In arrivo</h2>
+    <p className="text-muted-foreground">
+      Fatture attese (dalle decadi dei subagenti, dalla mail o dagli estratti
+      dei broker) che il cassetto fiscale non ha ancora. Non sono nell'elenco
+      sotto finché non arrivano nel cassetto.
+    </p>
+    <table className="mt-2 w-full table-fixed tabular-nums">
+      <tbody>
+        {righe.map((r) => (
+          <RigaElenco key={r.chiave} r={r} />
+        ))}
+      </tbody>
+    </table>
+  </section>
+);
+
+const Conteggi = ({ righe }: { righe: Fattura[] }) => (
+  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm tabular-nums">
+    {STATI.filter((s) => righe.some((r) => r.stato === s)).map((s) => {
+      const sp = spiegaStato(righe, s);
+      const n = righe.filter((r) => r.stato === s).length;
+      return (
+        <span key={s} className={COLORE[s] || "text-muted-foreground"}>
+          {s}: {n},{" "}
+          <Spiegato spiega={sp} className="font-semibold">
+            {euro(sp.calcolo?.[0]?.valore as number)}
+          </Spiegato>
+        </span>
+      );
+    })}
+  </div>
+);
+
 export const Fatture = () => {
   const sub = useFattureSub();
   const broker = useBlocchi<{ righe?: BrokerRiga[] }, unknown>("broker_saldi");
@@ -172,10 +221,15 @@ export const Fatture = () => {
     "fatture",
   );
   const bollette = useBlocchi<unknown, { bollette: Bolletta[] }>("bollette");
+  const fisse = useBlocchi<unknown, { righe?: FatturaFissa[] }>(
+    "fatture_fisse",
+  );
   const tombale = useBlocchi<unknown, Tombale | null>("tombale");
+  const controllo = useBlocchi<unknown, Controllo | null>("controllo_fatture");
   const [parametri, setParametri] = useSearchParams();
   const tipo = (parametri.get("tipo") ?? "tutte") as Tipo | "tutte";
   const stato = (parametri.get("stato") ?? "tutti") as Stato | "tutti";
+  const mese = parametri.get("mese") ?? "";
   const cerca = parametri.get("cerca") ?? "";
   const cambia = (chiave: string, valore: string, base: string) => {
     const p = new URLSearchParams(parametri);
@@ -184,27 +238,30 @@ export const Fatture = () => {
     setParametri(p, { replace: true });
   };
 
-  const qs = [sub, broker, cassetto, bollette, tombale];
+  const qs = [sub, broker, cassetto, bollette, fisse, tombale, controllo];
   if (qs.some((q) => q.isPending))
     return <div className="p-4 text-muted-foreground">Carico i dati...</div>;
   const errore = qs.find((q) => q.error)?.error;
   if (errore) return <ErroreCaricamento errore={errore} />;
 
-  const tutte = unisciFatture({
+  const { elenco: tutte, inArrivo } = unisciFatture({
     sub: sub.data ?? {},
     broker: broker.data?.mesi ?? {},
     cassetto: cassetto.data?.mesi ?? {},
     bollette: bollette.data?.info?.bollette ?? [],
+    fisse: fisse.data?.info?.righe ?? [],
   });
-  const righe = filtra(tutte, tipo, stato, cerca);
+  const righe = filtra(tutte, { tipo, stato, mese, cerca });
   const mesi = perMese(righe);
+  const tuttiMesi = [...new Set(tutte.map((r) => r.mese))].sort().reverse();
   const infoCassetto = cassetto.data?.info;
-  const filtrate = tipo !== "tutte" || stato !== "tutti" || cerca.trim() !== "";
+  const filtrate =
+    tipo !== "tutte" || stato !== "tutti" || mese !== "" || cerca.trim() !== "";
   return (
     <div className="pt-4 md:pt-0">
       <Pagina
         titolo="Fatture"
-        sotto={`Tutte le fatture, dalla più recente: subagenti, collaboratori, broker, bollette e fornitori del cassetto fiscale. ${tutte.length} in tutto. Passa sopra (o tocca) un importo per vedere il calcolo.`}
+        sotto={`Le fatture ricevute dal cassetto fiscale, dalla più recente, più l'affitto di Sanremo (senza fattura) e gli estratti dei broker che non mandano fattura. ${tutte.length} in tutto. Passa sopra (o tocca) un importo per vedere il calcolo.`}
       >
         <div className="flex flex-wrap items-center gap-3">
           <Scelta
@@ -212,12 +269,12 @@ export const Fatture = () => {
             valore={tipo}
             voci={[
               ["tutte", "Tutte"],
-              ...(Object.entries(TIPI) as [Tipo, string][]),
+              ...TIPI_FILTRO.map((t): [Tipo, string] => [t, TIPI[t]]),
             ]}
             onChange={(v) => cambia("tipo", v, "tutte")}
           />
           <Scelta
-            etichetta="Pagamento"
+            etichetta="Stato"
             valore={stato}
             voci={[
               ["tutti", "Tutti"],
@@ -225,15 +282,30 @@ export const Fatture = () => {
             ]}
             onChange={(v) => cambia("stato", v, "tutti")}
           />
+          <Scelta
+            etichetta="Mese"
+            valore={mese}
+            voci={[
+              ["", "Tutti"],
+              ...tuttiMesi.map((m): [string, string] => [m, nomeMese(m)]),
+            ]}
+            onChange={(v) => cambia("mese", v, "")}
+          />
           <label className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Cerca</span>
+            <span className="text-muted-foreground">Fornitore</span>
             <input
               type="search"
-              className="w-44 rounded-md border bg-card px-2 py-1 text-sm"
-              placeholder="fornitore, es. Marradi"
+              list="fornitori-fatture"
+              className="w-48 rounded-md border bg-card px-2 py-1 text-sm"
+              placeholder="es. Marradi"
               value={cerca}
               onChange={(e) => cambia("cerca", e.target.value, "")}
             />
+            <datalist id="fornitori-fatture">
+              {fornitori(tutte).map((f) => (
+                <option key={f} value={f} />
+              ))}
+            </datalist>
           </label>
           {filtrate && (
             <span className="text-sm text-muted-foreground">
@@ -241,6 +313,9 @@ export const Fatture = () => {
             </span>
           )}
         </div>
+        <Conteggi righe={righe} />
+
+        {inArrivo.length > 0 && <InArrivo righe={inArrivo} />}
 
         {cerca.trim() !== "" && righe.length > 0 && (
           <div className="rounded-2xl border border-l-4 border-l-pa-blu bg-card p-4 text-sm">
@@ -314,20 +389,19 @@ export const Fatture = () => {
           </section>
         ))}
 
+        {controllo.data?.info && (
+          <details className="rounded-2xl border bg-card">
+            <summary className="cursor-pointer p-4 text-sm font-semibold">
+              Controllo fatture e uscite, mese per mese
+            </summary>
+            <ControlloFatture c={controllo.data.info} righe={tutte} />
+          </details>
+        )}
         {tombale.data?.info && <RiquadroTombale t={tombale.data.info} />}
         {infoCassetto && infoCassetto.n_fatture === 0 && (
           <p className="text-xs text-muted-foreground">
             Fatture del cassetto fiscale: non ancora arrivate.{" "}
             {infoCassetto.nota}
-          </p>
-        )}
-        {infoCassetto && (infoCassetto.senza_xml ?? 0) > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {infoCassetto.senza_xml} fatture del cassetto vengono solo
-            dall'elenco, senza l'XML: ritenuta e netto non si leggono e il
-            pagamento si ricava dal bonifico quando c'è il nome del fornitore.
-            Mesi da scaricare col download massivo:{" "}
-            {(infoCassetto.mesi_senza_xml ?? []).map(nomeMese).join(", ")}.
           </p>
         )}
         {infoCassetto && infoCassetto.errori.length > 0 && (
